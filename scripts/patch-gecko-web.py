@@ -120,6 +120,35 @@ replace_once(
     emulator.apply_host_input(&input);'''
 )
 
+# Install the render sink on the selected concrete emulator.
+replace_once(
+    web_rs,
+    '''    emulator.render_sink = Box::new(WebSink {
+        shared: action_queue.clone(),
+        scratch: Vec::new(),
+        scratch_sent_len: 0,
+        last_epoch: 0,
+    });''',
+    '''    match &mut emulator {
+        Emulator::GameCube(emulator) => {
+            emulator.render_sink = Box::new(WebSink {
+                shared: action_queue.clone(),
+                scratch: Vec::new(),
+                scratch_sent_len: 0,
+                last_epoch: 0,
+            });
+        }
+        Emulator::Wii(emulator) => {
+            emulator.render_sink = Box::new(WebSink {
+                shared: action_queue.clone(),
+                scratch: Vec::new(),
+                scratch_sent_len: 0,
+                last_epoch: 0,
+            });
+        }
+    }'''
+)
+
 # Enable selection of Wii disc images in the browser.
 replace_once(
     web_html,
