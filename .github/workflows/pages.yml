@@ -1,4 +1,4 @@
-name: Deploy static site to GitHub Pages
+name: Build Gecko WASM and deploy Wii Web
 
 on:
   push:
@@ -21,14 +21,60 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Wii Web site
         uses: actions/checkout@v4
+
+      - name: Checkout Gecko emulator source
+        uses: actions/checkout@v4
+        with:
+          repository: ioncodes/gecko
+          path: gecko-src
+
+      - name: Initialize Gecko submodules
+        working-directory: gecko-src
+        run: |
+          git submodule update --init --depth 1 --recursive submodules/chipi-spec
+          git submodule update --init --depth 1 --recursive submodules/solstice
+          git submodule update --init --depth 1 submodules/dolphin
+
+      - name: Install Rust WebAssembly target
+        uses: dtolnay/rust-toolchain@1.96.0
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+
+      - name: Cache Rust build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            gecko-src/target
+          key: gecko-wasm-${{ runner.os }}-${{ hashFiles('gecko-src/**/Cargo.lock') }}
+          restore-keys: |
+            gecko-wasm-${{ runner.os }}-
+
+      - name: Build Gecko WebAssembly runtime
+        working-directory: gecko-src
+        run: wasm-pack build crates/web --target web --out-dir pkg --out-name gecko_web --release
+
+      - name: Assemble static website
+        run: |
+          mkdir -p gecko
+          cp gecko-src/crates/web/index.html gecko/index.html
+          cp -r gecko-src/crates/web/pkg gecko/pkg
+          rm -rf gecko-src
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
       - name: Upload static files
         uses: actions/upload-pages-artifact@v3
         with:
           path: "."
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
