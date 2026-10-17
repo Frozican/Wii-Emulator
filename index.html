@@ -32,20 +32,14 @@
 
 
     <section class="panel" id="restore-tool" aria-labelledby="restoreTitle">
-      <div class="eyebrow">IMAGE PREPARATION</div>
-      <h2 id="restoreTitle">Restore an NKit Wii image</h2>
-      <p class="muted">Choose your own <code>.nkit.iso</code> to check it locally before restoration. The selected file is never uploaded. Full restoration is not yet implemented in this browser page; this checker will not create or rename a fake ISO.</p>
-      <label class="file-picker" for="restoreFile">
-        <span class="upload-icon">↑</span>
-        <strong>Select .nkit.iso</strong>
-        <span>Check the file on this device</span>
-        <small>Nothing is uploaded</small>
-      </label>
-      <input id="restoreFile" type="file" accept=".nkit.iso,.nkit.gcz,application/octet-stream">
-      <div class="file-info hidden" id="restoreInfo" role="status" aria-live="polite"></div>
-      <div class="notice"><strong>Need the actual conversion?</strong><br>Use the open-source NKit2 desktop tool or nkit2iso. After converting your own image to a regular ISO or RVZ, return here and try the experimental engine. The browser converter is not ready yet.</div>
-      <p><a class="primary engine-link" href="https://github.com/Nanook/NKit/releases/latest" target="_blank" rel="noopener noreferrer">Get NKit2 <span aria-hidden="true">↗</span></a></p>
-      <p><a class="engine-link" href="https://github.com/DonMikone/nkit2iso/releases/latest" target="_blank" rel="noopener noreferrer">Get nkit2iso (Windows/Linux/macOS) ↗</a></p>
+      <div class="eyebrow">LOCAL IMAGE RESTORE</div>
+      <h2 id="restoreTitle">Restore an NKit image on Android</h2>
+      <p class="muted">The browser itself cannot run the native NKit restore engine reliably on multi-gigabyte images. The practical no-server route is to run the open-source nkit2iso tool locally in Termux. Your game image stays on your phone and is not uploaded.</p>
+      <div class="notice"><strong>Before starting</strong><br>Have several gigabytes of free storage: your example image needs roughly 4.7 GiB for a full Wii ISO, plus working room. Keep the original NKit file until the output has been checked.</div>
+      <p><a class="primary engine-link" href="./restore-android.html">Open the Android restore guide <span aria-hidden="true">→</span></a></p>
+      <p><a class="engine-link" href="https://github.com/termux/termux-app/releases/latest" target="_blank" rel="noopener noreferrer">Get Termux from official releases ↗</a></p>
+      <p><a class="engine-link" href="https://pkg.go.dev/github.com/DonMikone/nkit2iso" target="_blank" rel="noopener noreferrer">nkit2iso documentation ↗</a></p>
+      <p class="muted">This is a real local workaround, not an in-browser conversion. The guide explains the commands and how to verify that restoration succeeded.</p>
     </section>
 
     <section class="panel" id="reader-test" aria-labelledby="readerTestTitle">
