@@ -30,8 +30,43 @@ self.onmessage = async (event) => {
     const rawFstSize = be32(header, 0x428);
     const fstOffset = isWii ? rawFstOffset * 4 : rawFstOffset;
     const fstSize = isWii ? rawFstSize * 4 : rawFstSize;
+    if (isWii && (!fstOffset || !fstSize)) {
+      // Wii discs normally keep game files inside an encrypted data partition;
+      // the GameCube-style header FST fields can be zero and are not the right path.
+      const partitionInfo = await readRange(file, 0x40000, 0x20);
+      const groups = [];
+      for (let group = 0; group < 4; group++) {
+        const base = group * 8;
+        const count = be32(partitionInfo, base);
+        const tableOffsetRaw = be32(partitionInfo, base + 4);
+        const tableOffset = tableOffsetRaw * 4;
+        let firstPartition = null;
+        if (count > 0 && tableOffset > 0 && tableOffset + 8 <= file.size) {
+          const entry = await readRange(file, tableOffset, 8);
+          firstPartition = {
+            offset: be32(entry, 0) * 4,
+            type: be32(entry, 4)
+          };
+        }
+        groups.push('Group ' + group + ': count=' + count +
+          ', tableOffsetRaw=0x' + tableOffsetRaw.toString(16) +
+          ', tableOffset=0x' + tableOffset.toString(16) +
+          (firstPartition ? ', firstPartition=0x' + firstPartition.offset.toString(16) +
+            ', type=' + firstPartition.type : ''));
+      }
+      self.postMessage({type:'result', ok:true, message:
+        'Wii disc header recognized, but its header FST offset/size are zero.\n' +
+        'This can be normal for Wii discs: the game filesystem is inside the encrypted data partition, not at the GameCube-style header FST range.\n' +
+        'Header bytes read: ' + header.length.toLocaleString() +
+        '\nPartition table bytes read: ' + partitionInfo.length.toLocaleString() +
+        '\nTotal bytes read by test: ' + (header.length + partitionInfo.length).toLocaleString() +
+        '\nWhole file copied: NO\n\nPartition table diagnostics:\n' + groups.join('\n') +
+        '\n\nThis confirms only disc-header/partition-table range reads. Reading game files requires Wii partition handling/decryption and possibly NKit-specific support.'
+      });
+      return;
+    }
     if (!fstOffset || !fstSize || fstOffset + fstSize > file.size) {
-      throw new Error('Filesystem table range is invalid for this file. Offset=' + fstOffset + ', size=' + fstSize + ', file=' + file.size + ' bytes. Some NKit images may need additional format-specific handling.');
+      throw new Error('Filesystem table range is invalid for this file. Offset=' + fstOffset + ', size=' + fstSize + ', file=' + file.size + ' bytes.');
     }
     if (fstSize > 128 * 1024 * 1024) {
       throw new Error('Filesystem table is unusually large (' + fstSize + ' bytes); stopped before allocating a large buffer.');
