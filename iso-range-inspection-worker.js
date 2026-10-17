@@ -24,9 +24,12 @@ self.onmessage = async (event) => {
     if (!isWii && !isGc) {
       throw new Error('Disc magic not recognized. Wii magic at 0x18: ' + wiiMagic + '; GameCube magic at 0x1C: ' + gcMagic + '. The file may be an unsupported/repacked image.');
     }
-    // Gecko reads the header's FST offset and size directly; only Wii FST file-entry offsets use a 2-bit shift.
-    const fstOffset = be32(header, 0x424);
-    const fstSize = be32(header, 0x428);
+    // Wii disc headers store these offsets/sizes in units of 4 bytes; GameCube headers store byte values.
+    // Gecko's unshift_wii_header_offsets() applies this same << 2 conversion to 0x420..0x434.
+    const rawFstOffset = be32(header, 0x424);
+    const rawFstSize = be32(header, 0x428);
+    const fstOffset = isWii ? rawFstOffset * 4 : rawFstOffset;
+    const fstSize = isWii ? rawFstSize * 4 : rawFstSize;
     if (!fstOffset || !fstSize || fstOffset + fstSize > file.size) {
       throw new Error('Filesystem table range is invalid for this file. Offset=' + fstOffset + ', size=' + fstSize + ', file=' + file.size + ' bytes. Some NKit images may need additional format-specific handling.');
     }
