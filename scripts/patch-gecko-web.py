@@ -167,6 +167,57 @@ replace_once(
 )
 replace_once(
     web_html,
+    '''            function readFile(file) {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(new Uint8Array(reader.result));
+                    reader.readAsArrayBuffer(file);
+                });
+            }''',
+    '''            function readFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(new Uint8Array(reader.result));
+                    reader.onerror = () => reject(reader.error ?? new Error('Could not read selected file'));
+                    reader.onabort = () => reject(new Error('File reading was cancelled'));
+                    reader.readAsArrayBuffer(file);
+                });
+            }'''
+)
+replace_once(
+    web_html,
+    '''            inputRom.addEventListener('change', async (e) => {
+                if (e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    romData = await readFile(file);
+                    romName = file.name;
+                    romNameEl.textContent = file.name;
+                    startBtn.disabled = false;
+                }
+            });''',
+    '''            inputRom.addEventListener('change', async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) {
+                    romNameEl.textContent = 'no file selected';
+                    return;
+                }
+                romData = null;
+                romName = file.name;
+                romNameEl.textContent = file.name + ' (reading...)';
+                startBtn.disabled = true;
+                try {
+                    romData = await readFile(file);
+                    romNameEl.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(0) + ' MB)';
+                    startBtn.disabled = false;
+                } catch (error) {
+                    romNameEl.textContent = 'Read failed: ' + (error?.message ?? 'unknown error');
+                    console.error('Failed to read selected disc image', error);
+                }
+            });'''
+)
+
+replace_once(
+    web_html,
     """            startBtn.addEventListener('click', () => {
                 if (!romData) return;
                 document.getElementById('setup').style.display = 'none';
