@@ -7,7 +7,8 @@ A mobile-first static website exploring browser-based GameCube/Wii emulation, ho
 - The main page is a mobile-first project frontend.
 - GitHub Actions checks out the open-source [Gecko emulator](https://github.com/ioncodes/gecko), builds its WebAssembly frontend, and publishes it under `/gecko/`.
 - Open the experimental engine at [https://frozican.github.io/Wii-Emulator/gecko/](https://frozican.github.io/Wii-Emulator/gecko/).
-- **Important limitation:** Gecko's current web entry point accepts DOL homebrew executables or IPL files. This integration does not yet boot Wii ISO/RVZ disc images. The current browser input path uses keyboard controls; custom touch controls are out of scope.
+- **Important limitation:** Wii ISO/RVZ boot is still experimental and not verified. The current Gecko boot path loads the full disc image into memory; the streaming reader test is a separate diagnostic and is not yet connected to the emulation core. Keyboard controls are available; mobile touch controls and a successful Android game boot remain unverified.
+- Test the bounded reader and NKit metadata probe at [Reader Test](https://frozican.github.io/Wii-Emulator/reader-test/). The probe checks metadata only; it does not decode the entire NKit image or boot a game.
 
 ## GitHub Pages
 
@@ -26,6 +27,7 @@ A mobile-first static website exploring browser-based GameCube/Wii emulation, ho
 ## Next engineering milestones
 
 1. Verify the generated Gecko runtime boots on desktop and Android browsers.
-2. Extend the browser interface and emulator API to load Wii disc images (ISO/RVZ), including any required disc filesystem and boot path.
-3. Implement and test the Wii disc-image loading and boot path.
-4. Measure memory use and performance on mobile devices before calling it playable.
+2. Implement a resumable/asynchronous disc-read path; the current core expects synchronous reads.
+3. Decode NKit gap/partition data correctly without retaining the whole ISO in RAM.
+4. Connect the reader to the Wii apploader and DVD interface, then test boot.
+5. Add mobile touch controls and measure memory/performance on Android before calling it playable.
