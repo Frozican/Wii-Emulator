@@ -173,11 +173,7 @@ replace_once(
     '            const startBtn = document.getElementById(\'start\');',
     '            const startBtn = document.getElementById(\'start\');\n            const bootStatus = document.getElementById(\'boot-status\');\n            const setBootStatus = (message) => { bootStatus.textContent = message; };\n            window.addEventListener(\'error\', (event) => {\n                const detail = event.message || event.error?.message || \'Unknown browser/WASM error\';\n                setBootStatus(\'BOOT ERROR: \' + detail);\n                console.error(\'[Wii boot error]\', event.error || event.message);\n            });\n            window.addEventListener(\'unhandledrejection\', (event) => {\n                const detail = event.reason?.message || String(event.reason || \'Unknown async error\');\n                setBootStatus(\'ASYNC BOOT ERROR: \' + detail);\n                console.error(\'[Wii async boot error]\', event.reason);\n            });'
 )
-replace_once(
-    web_html,
-    "document.getElementById('setup').style.display = 'none';",
-    "setBootStatus('Starting Wii boot path… if this message remains, inspect the error below or browser console.');\n                document.getElementById('setup').style.display = 'none';"
-)
+
 
 replace_once(
     web_html,
@@ -336,6 +332,7 @@ replace_once(
 
                 try {
                     await wasmReady;
+                    setBootStatus('Starting Wii boot path…');
                     document.getElementById('setup').style.display = 'none';
                     const selectedRom = romData;
                     console.info('[Wii boot attempt] Starting Gecko with', romName, '(' + selectedRom.byteLength + ' bytes). A successful handoff does not guarantee that the game reaches gameplay.');
