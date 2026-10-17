@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wii ISO Range Inspection Test</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10131a;color:#eef2ff}
+body{max-width:850px;margin:0 auto;padding:18px}
+h1{font-size:1.4rem}p{line-height:1.45;color:#c6cce0}
+.panel{background:#1a2030;border:1px solid #303a51;border-radius:12px;padding:14px;margin:12px 0}
+input,button{font:inherit;max-width:100%}button{font-weight:650;border:0;border-radius:10px;padding:12px 16px;background:#8db7ff;color:#10131a}
+#status{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}
+.small{font-size:.9rem;color:#aeb8d2}
+</style>
+</head>
+<body>
+<h1>Wii ISO Range Inspection Test</h1>
+<p>Select your own Wii ISO file. The page reads only the disc header and filesystem-table range in a Worker; it does not copy the complete ISO into browser storage or upload it anywhere.</p>
+<div class="panel">
+<input id="file" type="file" accept=".iso,.nkit.iso,application/octet-stream">
+<p><button id="run">Inspect ISO ranges</button></p>
+<div id="status">Choose an ISO file to begin.</div>
+</div>
+<p class="small">This validates file-backed random access and basic disc metadata only. It does not boot a game or prove full Gecko compatibility.</p>
+<script>
+const fileInput = document.getElementById('file');
+const runButton = document.getElementById('run');
+const statusBox = document.getElementById('status');
+function show(s){statusBox.textContent=s}
+runButton.addEventListener('click',()=>{
+ const file=fileInput.files && fileInput.files[0];
+ if(!file){show('Choose an ISO file first.');return}
+ runButton.disabled=true;
+ show('Starting local Worker…');
+ const worker=new Worker('./iso-range-inspection-worker.js');
+ worker.onmessage=(e)=>{
+   const d=e.data||{};
+   if(d.type==='status') show(d.message);
+   if(d.type==='result'){show((d.ok?'PASS':'FAIL')+'\n'+d.message);runButton.disabled=false;worker.terminate()}
+   if(d.type==='error'){show('ERROR\n'+d.message);runButton.disabled=false;worker.terminate()}
+ };
+ worker.onerror=(e)=>{show('WORKER ERROR\n'+(e.message||'Unknown error'));runButton.disabled=false;worker.terminate()};
+ worker.postMessage({file});
+});
+</script>
+</body>
+</html>
