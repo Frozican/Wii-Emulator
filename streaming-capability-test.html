@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wii Emulator — Worker Capability Test</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #10131a; color: #f2f4f8; }
+    body { max-width: 760px; margin: 0 auto; padding: 20px; }
+    h1 { font-size: 1.45rem; }
+    p { line-height: 1.5; color: #c5ccda; }
+    button { border: 0; border-radius: 10px; padding: 12px 16px; font: inherit; font-weight: 650; background: #79d2ad; color: #102018; }
+    #status { margin: 16px 0; padding: 12px; border: 1px solid #343c4b; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    small { color: #aab3c4; }
+  </style>
+</head>
+<body>
+  <h1>Worker / Rendering Capability Test</h1>
+  <p>This diagnostic checks whether this browser can expose rendering and WebGPU capabilities inside a Web Worker. It does not start Gecko and does not prove that a Wii game can boot.</p>
+  <button id="run">Run test</button>
+  <div id="status" role="status">Ready. Tap “Run test”.</div>
+  <p><small>For meaningful results, open this page directly on the Android phone in the same browser you use for the emulator.</small></p>
+  <script>
+    const status = document.querySelector("#status");
+    const run = document.querySelector("#run");
+    const yesNo = value => value === true ? "YES" : value === false ? "NO" : String(value);
+    run.addEventListener("click", () => {
+      run.disabled = true;
+      status.textContent = "Testing worker capabilities…";
+      const main = {
+        secureContext: window.isSecureContext,
+        mainThreadOffscreenCanvas: typeof OffscreenCanvas !== "undefined",
+        mainThreadWebGPU: Boolean(navigator.gpu),
+        sharedArrayBuffer: typeof SharedArrayBuffer !== "undefined",
+        crossOriginIsolated: window.crossOriginIsolated === true
+      };
+      const worker = new Worker("./streaming-capability-worker.js");
+      const timeout = setTimeout(() => {
+        worker.terminate();
+        status.textContent = "Main thread:\n" + Object.entries(main).map(([k,v]) => k + ": " + yesNo(v)).join("\n") + "\n\nWorker: timed out (no response)";
+        run.disabled = false;
+      }, 10000);
+      worker.onmessage = event => {
+        if (event.data.type !== "result") return;
+        clearTimeout(timeout);
+        worker.terminate();
+        const rows = Object.entries(event.data.result).map(([k,v]) => k + ": " + yesNo(v));
+        status.textContent = "Main thread:\n" + Object.entries(main).map(([k,v]) => k + ": " + yesNo(v)).join("\n") + "\n\nWorker:\n" + rows.join("\n");
+        run.disabled = false;
+      };
+      worker.onerror = event => {
+        clearTimeout(timeout);
+        worker.terminate();
+        status.textContent = "Worker failed: " + event.message + "\n\nMain thread:\n" + Object.entries(main).map(([k,v]) => k + ": " + yesNo(v)).join("\n");
+        run.disabled = false;
+      };
+      worker.postMessage({ run: true });
+    });
+  </script>
+</body>
+</html>
