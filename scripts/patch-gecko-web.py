@@ -265,6 +265,33 @@ replace_once(
                     romNameEl.textContent = 'NKit ISO detected: restoration is not implemented yet. This image can be inspected, but cannot boot in this build. Use a fully restored Wii ISO or RVZ image.';
                     return;
                 }
+
+                // Reject unsupported or corrupt disc formats before entering WASM.
+                // This prevents an invalid header from triggering a Rust panic in the
+                // browser UI and gives a useful message instead of a frozen canvas.
+                const isRvz = romData.length >= 4 &&
+                    romData[0] === 0x52 && romData[1] === 0x56 &&
+                    romData[2] === 0x5a && romData[3] === 0x01;
+                const isWiiIso = romData.length >= 0x1c &&
+                    romData[0x18] === 0x5d && romData[0x19] === 0x1c &&
+                    romData[0x1a] === 0x9e && romData[0x1b] === 0xa3;
+                if (!isRvz && !isWiiIso) {
+                    romNameEl.textContent = 'Unsupported image: choose a restored Wii .iso or .rvz file. NKit, GameCube discs, WBFS, and other formats are not bootable in this build.';
+                    return;
+                }
+
+                // Avoid predictable mobile OOMs: the current Rust core stores the
+                // whole image and duplicates it while parsing. This is a temporary
+                // guard until async disc streaming is wired into the emulation core.
+                const estimatedPeak = romData.byteLength * 2;
+                const availableHeap = (navigator.deviceMemory || 4) * 1024 * 1024 * 1024;
+                if (estimatedPeak > availableHeap * 0.6) {
+                    romNameEl.textContent = 'Image is too large for safe loading in this browser build (estimated peak ' +
+                        (estimatedPeak / 1024 / 1024 / 1024).toFixed(1) +
+                        ' GB). Full-disc streaming is not integrated yet; try a smaller RVZ or a desktop browser.';
+                    return;
+                }
+
                 try {
                     await wasmReady;
                     document.getElementById('setup').style.display = 'none';
