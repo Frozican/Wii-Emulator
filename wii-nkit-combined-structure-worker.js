@@ -16,10 +16,7 @@ self.onmessage=async e=>{
    tableSummary.push('type '+g+': count='+count+', table='+fmt(table));
    if(!count||table+8>file.size)continue;
    const entries=await read(file,table,Math.min(count*8,0x1000));
-   for(let i=0;i<Math.floor(entries.length/8);i++){
-    const off=u32(entries,i*8)*4,type=u32(entries,i*8+4);
-    if(type===0&&!part)part={off,type,group:g,index:i};
-   }
+   for(let i=0;i<Math.floor(entries.length/8);i++){const off=u32(entries,i*8)*4,type=u32(entries,i*8+4);if(type===0&&!part)part={off,type,group:g,index:i}}
   }
   if(!part)throw Error('Could not find a type-0 data partition.');
   const ph=await read(file,part.off,0x2c0);
@@ -36,39 +33,46 @@ self.onmessage=async e=>{
   out.push('Wii disc magic: '+fmt(magic)+' (valid)');
   out.push('Disc version byte 0x61: '+fmt(disc[0x61])+' (not an encryption flag)');
   out.push('');
-  out.push('CHECK 2 — inspect candidate boot-header positions');
-  const candidates=[{name:'disc file + 0x420',base:0x420},{name:'partition data + 0x420',base:dataOff+0x420},{name:'partition data + 0x400 + 0x420',base:dataOff+0x820},{name:'partition data + 0x8000 + 0x420',base:dataOff+0x8420},{name:'partition data + 0x8000 + 0x400 + 0x420',base:dataOff+0x8820}];
-  let bytesRead=0;
+  out.push('CHECK 2 — inspect possible boot.bin headers');
+  const candidates=[
+   {name:'disc header area',base:0},
+   {name:'partition data start',base:dataOff},
+   {name:'partition data start + 0x400',base:dataOff+0x400},
+   {name:'partition data start + 0x8000',base:dataOff+0x8000},
+   {name:'partition data start + 0x8400',base:dataOff+0x8400}
+  ];
+  let bytesRead=0;const inspected=[];
   for(const c of candidates){
-   if(c.base+0x40>file.size){out.push(c.name+': outside file');continue}
-   const b=await read(file,c.base,0x40);bytesRead+=b.length;
-   const fstOff=u32(b,4),fstSize=u32(b,8),fstMax=u32(b,12);
-   out.push(c.name+' @ '+fmt(c.base)+': bytes[0..31]='+hex(b,32));
-   out.push('  candidate FST fields (+4/+8/+12): offset='+fmt(fstOff)+', size='+fmt(fstSize)+', max='+fmt(fstMax));
+   if(c.base+0x440>file.size){out.push(c.name+' @ '+fmt(c.base)+': outside file');continue}
+   const b=await read(file,c.base,0x440);bytesRead+=b.length;
+   const fstOff=u32(b,0x424),fstSize=u32(b,0x428),fstMax=u32(b,0x42c);
+   const item={...c,fstOff,fstSize,fstMax};
+   inspected.push(item);
+   out.push(c.name+' @ '+fmt(c.base)+': first 16 bytes='+hex(b,16));
+   out.push('  boot-header fields at +0x424/+0x428/+0x42C: FST offset='+fmt(fstOff)+', size='+fmt(fstSize)+', max='+fmt(fstMax));
   }
   out.push('');
-  out.push('CHECK 3 — test FST candidate ranges and signatures');
+  out.push('CHECK 3 — check candidate FST ranges and entry structure');
   let plausible=0;
-  for(const c of candidates.slice(1)){
-   if(c.base+0x40>file.size)continue;
-   const b=await read(file,c.base,0x40);
-   const fstOff=u32(b,4),fstSize=u32(b,8),fstMax=u32(b,12);
-   // Wii boot.bin fields are byte offsets/sizes, not word-scaled.
-   const abs=dataOff+fstOff;
-   const valid=fstOff>0&&fstSize>=12&&fstSize<0x10000000&&abs+Math.min(fstSize,32)<=file.size&&fstMax>=fstSize&&fstMax<0x10000000;
-   out.push(c.name+': '+(valid?'range looks plausible':'not plausible')+' (computed dataStart+FSTOffset='+fmt(abs)+')');
+  for(const c of inspected.filter(x=>x.base!==0)){
+   // This is only a raw-offset hypothesis; encrypted/hash-sector mapping may make it invalid.
+   const abs=c.base+c.fstOff;
+   const valid=c.fstOff>0&&c.fstSize>=12&&c.fstSize<0x10000000&&c.fstMax>=c.fstSize&&c.fstMax<0x10000000&&abs+c.fstSize<=file.size&&abs>=dataOff&&abs<dataOff+dataSize;
+   out.push(c.name+': '+(valid?'numeric range plausible':'not plausible')+'; candidate FST absolute offset='+fmt(abs));
    if(valid){
-    plausible++;
-    const fst=await read(file,abs,Math.min(32,fstSize));bytesRead+=fst.length;
-    out.push('  first FST bytes: '+hex(fst,32));
-    out.push('  FST first word: '+fmt(u32(fst,0))+'; first entry name offset='+fmt(u32(fst,4)&0x00ffffff));
+    const fst=await read(file,abs,Math.min(32,c.fstSize));bytesRead+=fst.length;
+    const type=u32(fst,0),nameOff=u32(fst,4)&0x00ffffff,next=u32(fst,8);
+    const structure=(type===0&&next>0&&next<0x1000000&&nameOff< c.fstSize);
+    out.push('  first 32 FST bytes: '+hex(fst,32));
+    out.push('  first entry: typeWord='+fmt(type)+', nameOffset='+fmt(nameOff)+', nextIndex/size='+fmt(next)+'; root-entry shape '+(structure?'looks plausible':'not confirmed'));
+    if(structure)plausible++;
    }
   }
   out.push('');
-  out.push('Range bytes read (approx, including small metadata reads): '+(bytesRead+0x440+0x20+0x2c0).toLocaleString());
+  out.push('Range bytes read (approx): '+(bytesRead+0x20+0x2c0).toLocaleString()+' bytes');
   out.push('Whole ISO copied: NO');
   out.push('');
-  out.push('Interpretation: this is a diagnostic, not a decryption implementation. Candidate offsets are hypotheses. A plausible numeric range alone does NOT prove the FST is valid; the first entry bytes and actual NKit layout must be verified.');
+  out.push('Caution: FST fields and ranges are only candidate interpretations. This test does not decrypt data or map logical Wii sectors through 0x8000-byte physical sectors, so even a plausible range is not proof of a valid FST.');
   postMessage({ok:true,message:out.join('\n')});
  }catch(err){postMessage({ok:false,message:(err&&err.stack)||String(err)})}
 };
