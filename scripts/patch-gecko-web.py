@@ -254,9 +254,25 @@ replace_once(
             });""",
     """            startBtn.addEventListener('click', async () => {
                 if (!romData) return;
-                await wasmReady;
-                document.getElementById('setup').style.display = 'none';
-                start_emulator(romData, romName, dspData ?? undefined);
+                // Gecko's current ISO parser expects a restored, standard disc image.
+                // NKit's NKIT marker is at 0x200; the browser metadata probe does not
+                // restore its removed gap/hash data, so attempting to boot it is unsafe.
+                if (romData.length >= 0x204 &&
+                    romData[0x200] === 0x4e &&
+                    romData[0x201] === 0x4b &&
+                    romData[0x202] === 0x49 &&
+                    romData[0x203] === 0x54) {
+                    romNameEl.textContent = 'NKit ISO detected: restoration is not implemented yet. This image can be inspected, but cannot boot in this build. Use a fully restored Wii ISO or RVZ image.';
+                    return;
+                }
+                try {
+                    await wasmReady;
+                    document.getElementById('setup').style.display = 'none';
+                    start_emulator(romData, romName, dspData ?? undefined);
+                } catch (error) {
+                    romNameEl.textContent = 'Could not start emulator: ' + (error?.message ?? 'unknown error');
+                    console.error('Failed to start emulator', error);
+                }
             });"""
 )
 
