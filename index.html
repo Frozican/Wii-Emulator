@@ -12,15 +12,22 @@
   <main class="app">
     <header class="topbar">
       <a class="brand" href="./" aria-label="Wii Web home"><span class="brand-mark">W</span><span>Wii <b>Web</b></span></a>
-      <span class="status"><i></i> Browser prototype</span>
+      <span class="status"><i></i> Experimental browser build</span>
     </header>
 
     <section class="hero" id="home">
       <div class="eyebrow">PLAY · RIGHT IN YOUR BROWSER</div>
       <h1>Your Wii.<br><span>On the web.</span></h1>
-      <p class="intro">A mobile-first home for browser-based Wii emulation. No account and no game uploads to a server.</p>
+      <p class="intro">A mobile-first browser project exploring GameCube and Wii emulation. Game files are processed locally; no game upload server is used.</p>
       <button class="primary" id="startButton" type="button">Start emulator <span aria-hidden="true">→</span></button>
       <div class="hero-note"><span class="shield">◇</span> Game files stay on your device</div>
+    </section>
+
+    <section class="panel" id="gecko-engine" aria-labelledby="geckoTitle">
+      <div class="eyebrow">FIRST ENGINE INTEGRATION</div>
+      <h2 id="geckoTitle">Try the Gecko WebAssembly build</h2>
+      <p class="muted">This experimental build uses the open-source Gecko emulator engine. Its current browser entry point accepts DOL homebrew executables or IPL files. It does not yet boot Wii ISO/RVZ disc images, and mobile touch controls are not connected.</p>
+      <a class="primary engine-link" href="./gecko/">Open experimental engine <span aria-hidden="true">→</span></a>
     </section>
 
     <section class="panel hidden" id="loaderPanel" aria-labelledby="loaderTitle">
@@ -37,7 +44,7 @@
       </label>
       <input id="gameFile" type="file" accept=".iso,.rvz,.gcm,.wbfs,application/octet-stream">
       <div class="file-info hidden" id="fileInfo"></div>
-      <div class="notice"><strong>Emulation engine not connected yet</strong><br>This prototype provides the mobile interface and local file picker. It does not run Wii games until a compatible browser/WASM engine is built and integrated.</div>
+      <div class="notice"><strong>This game picker is not connected to the engine</strong><br>Choosing an ISO/RVZ file here only displays its filename. For the experimental Gecko browser build, use the engine link on the home screen. Wii disc-image support is not implemented in this website yet.</div>
     </section>
 
     <section class="player hidden" id="playerPanel" aria-label="Emulator screen and controls">
