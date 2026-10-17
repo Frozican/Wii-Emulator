@@ -30,6 +30,24 @@
       <a class="primary engine-link" href="./gecko/">Open experimental engine <span aria-hidden="true">→</span></a>
     </section>
 
+
+    <section class="panel" id="restore-tool" aria-labelledby="restoreTitle">
+      <div class="eyebrow">IMAGE PREPARATION</div>
+      <h2 id="restoreTitle">Restore an NKit Wii image</h2>
+      <p class="muted">Choose your own <code>.nkit.iso</code> to check it locally before restoration. The selected file is never uploaded. Full restoration is not yet implemented in this browser page; this checker will not create or rename a fake ISO.</p>
+      <label class="file-picker" for="restoreFile">
+        <span class="upload-icon">↑</span>
+        <strong>Select .nkit.iso</strong>
+        <span>Check the file on this device</span>
+        <small>Nothing is uploaded</small>
+      </label>
+      <input id="restoreFile" type="file" accept=".nkit.iso,.nkit.gcz,application/octet-stream">
+      <div class="file-info hidden" id="restoreInfo" role="status" aria-live="polite"></div>
+      <div class="notice"><strong>Need the actual conversion?</strong><br>Use the open-source NKit2 desktop tool or nkit2iso. After converting your own image to a regular ISO or RVZ, return here and try the experimental engine. The browser converter is not ready yet.</div>
+      <p><a class="primary engine-link" href="https://github.com/Nanook/NKit/releases/latest" target="_blank" rel="noopener noreferrer">Get NKit2 <span aria-hidden="true">↗</span></a></p>
+      <p><a class="engine-link" href="https://github.com/DonMikone/nkit2iso/releases/latest" target="_blank" rel="noopener noreferrer">Get nkit2iso (Windows/Linux/macOS) ↗</a></p>
+    </section>
+
     <section class="panel" id="reader-test" aria-labelledby="readerTestTitle">
       <div class="eyebrow">DEVELOPER TEST</div>
       <h2 id="readerTestTitle">Test disc-file reading</h2>
