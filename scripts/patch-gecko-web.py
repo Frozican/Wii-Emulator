@@ -72,6 +72,13 @@ replace_once(
                         }'''
 )
 
+# Take ownership of uploaded bytes so ISO/RVZ parsing doesn't clone the full image again.
+replace_once(
+    web_rs,
+    'pub fn start_emulator(rom_data: &[u8], filename: String, dsp_irom: Option<Vec<u8>>) {',
+    'pub fn start_emulator(rom_data: Vec<u8>, filename: String, dsp_irom: Option<Vec<u8>>) {'
+)
+
 # Start with a disc-aware Wii boot path. DOL and IPL behavior remains unchanged.
 replace_once(
     web_rs,
@@ -82,15 +89,15 @@ replace_once(
         GameCube::with_image(&dol)
     };''',
     '''    let mut emulator = if name.ends_with(".bin") || name.ends_with(".ipl") {
-        Emulator::GameCube(GameCube::with_ipl(rom_data, false))
+        Emulator::GameCube(GameCube::with_ipl(&rom_data, false))
     } else if name.ends_with(".iso") || name.ends_with(".rvz") {
-        let dvd = image::load_dvd(rom_data.to_vec());
+        let dvd = image::load_dvd(rom_data);
         if !dvd.header().is_wii() {
             panic!("The selected disc image is not a Wii disc");
         }
         Emulator::Wii(Wii::apploader_hle(dvd).build())
     } else {
-        let dol = Dol::parse(rom_data.to_vec());
+        let dol = Dol::parse(rom_data);
         Emulator::GameCube(GameCube::with_image(&dol))
     };'''
 )
