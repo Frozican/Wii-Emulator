@@ -328,17 +328,23 @@ replace_once(
 )
 
 
+replace_once(
+    web_rs,
+    'mod disc_stream;\\n',
+    'mod disc_stream;\\nuse disc_stream::FileRangeReader;\\n'
+)
+
 # Route standard ISO runtime DVD reads through the browser's bounded File reader.
 # Boot-time parsing/apploader still currently uses the full in-memory image.
 replace_once(
     web_rs,
-    'use gecko::system::{System, SystemId};\\n',
-    'use gecko::system::{System, SystemId};\\nuse gecko::async_disc::{DiscReadRequest, DiscReadResponse};\\n'
+    'use gecko::system::{System, SystemId};\n',
+    'use gecko::system::{System, SystemId};\nuse gecko::async_disc::{DiscReadRequest, DiscReadResponse};\n'
 )
 
 replace_once(
     web_rs,
-    '    fn is_wii(&self) -> bool {\\n        matches!(self, Self::Wii(_))\\n    }\\n',
+    '    fn is_wii(&self) -> bool {\n        matches!(self, Self::Wii(_))\n    }\n',
     '''    fn is_wii(&self) -> bool {
         matches!(self, Self::Wii(_))
     }
@@ -367,8 +373,8 @@ replace_once(
 
 replace_once(
     web_rs,
-    '    state: SharedState,\\n',
-    '    state: SharedState,\\n    disc_reader: Option<Rc<FileRangeReader>>,\\n    disc_response: Rc<RefCell<Option<DiscReadResponse>>>,\\n    disc_read_in_flight: bool,\\n'
+    '    state: SharedState,\n',
+    '    state: SharedState,\n    disc_reader: Option<Rc<FileRangeReader>>,\n    disc_response: Rc<RefCell<Option<DiscReadResponse>>>,\n    disc_read_in_flight: bool,\n'
 )
 
 replace_once(
@@ -403,7 +409,7 @@ replace_once(
 
 replace_once(
     web_rs,
-    '                WindowEvent::RedrawRequested => {\\n                if let Some(window) = self.window.clone() {',
+    '                WindowEvent::RedrawRequested => {\n                if let Some(window) = self.window.clone() {',
     '''                WindowEvent::RedrawRequested => {
                 // Complete the last browser read on the emulator thread.
                 let completed = { self.disc_response.borrow_mut().take() };
@@ -442,19 +448,19 @@ replace_once(
 replace_once(
     web_rs,
     '        state: Rc::new(RefCell::new(None)),',
-    '        state: Rc::new(RefCell::new(None)),\\n        disc_reader,\\n        disc_response: Rc::new(RefCell::new(None)),\\n        disc_read_in_flight: false,'
+    '        state: Rc::new(RefCell::new(None)),\n        disc_reader,\n        disc_response: Rc::new(RefCell::new(None)),\n        disc_read_in_flight: false,'
 )
 
 replace_once(
     web_html,
     '            let mut romData = null;',
-    '            let mut romData = null;\\n            let mut selectedFile = null;'
+    '            let mut romData = null;\n            let mut selectedFile = null;'
 )
 
 replace_once(
     web_html,
-    '                romData = null;\\n                romName = file.name;',
-    '                romData = null;\\n                selectedFile = file;\\n                romName = file.name;'
+    '                romData = null;\n                romName = file.name;',
+    '                romData = null;\n                selectedFile = file;\n                romName = file.name;'
 )
 
 replace_once(
