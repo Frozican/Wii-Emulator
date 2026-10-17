@@ -327,4 +327,140 @@ replace_once(
             });"""
 )
 
+
+# Route standard ISO runtime DVD reads through the browser's bounded File reader.
+# Boot-time parsing/apploader still currently uses the full in-memory image.
+replace_once(
+    web_rs,
+    'use gecko::system::{System, SystemId};\\n',
+    'use gecko::system::{System, SystemId};\\nuse gecko::async_disc::{DiscReadRequest, DiscReadResponse};\\n'
+)
+
+replace_once(
+    web_rs,
+    '    fn is_wii(&self) -> bool {\\n        matches!(self, Self::Wii(_))\\n    }\\n',
+    '''    fn is_wii(&self) -> bool {
+        matches!(self, Self::Wii(_))
+    }
+
+    fn enable_async_dvd_reads(&mut self, enabled: bool) {
+        if let Self::Wii(emulator) = self {
+            emulator.enable_async_dvd_reads(enabled);
+        }
+    }
+
+    fn pending_async_dvd_read(&self) -> Option<DiscReadRequest> {
+        match self {
+            Self::GameCube(_) => None,
+            Self::Wii(emulator) => emulator.pending_async_dvd_read(),
+        }
+    }
+
+    fn complete_async_dvd_read(&mut self, response: DiscReadResponse) -> Result<(), String> {
+        match self {
+            Self::GameCube(_) => Err("asynchronous DVD reads are only enabled for Wii".into()),
+            Self::Wii(emulator) => emulator.complete_async_dvd_read(response),
+        }
+    }
+'''
+)
+
+replace_once(
+    web_rs,
+    '    state: SharedState,\\n',
+    '    state: SharedState,\\n    disc_reader: Option<Rc<FileRangeReader>>,\\n    disc_response: Rc<RefCell<Option<DiscReadResponse>>>,\\n    disc_read_in_flight: bool,\\n'
+)
+
+replace_once(
+    web_rs,
+    'pub fn start_emulator(rom_data: Vec<u8>, filename: String, dsp_irom: Option<Vec<u8>>) {',
+    'pub fn start_emulator(rom_data: Vec<u8>, filename: String, dsp_irom: Option<Vec<u8>>, disc_file: Option<web_sys::File>) {'
+)
+
+replace_once(
+    web_rs,
+    '        Emulator::Wii(Wii::apploader_hle(dvd).build())',
+    '''        let mut wii = Wii::apploader_hle(dvd).build();
+        // File-range reads are valid for standard, uncompressed ISO files only.
+        // RVZ requires its block decoder, which is not part of FileRangeReader.
+        if name.ends_with(".iso") {
+            wii.enable_async_dvd_reads(true);
+        }
+        Emulator::Wii(wii)'''
+)
+
+replace_once(
+    web_rs,
+    '    let input = if emulator.is_wii() {',
+    '''    let disc_reader = if name.ends_with(".iso") {
+        disc_file.map(|file| Rc::new(FileRangeReader::new(file)))
+    } else {
+        None
+    };
+
+    let input = if emulator.is_wii() {'''
+)
+
+replace_once(
+    web_rs,
+    '                WindowEvent::RedrawRequested => {\\n                if let Some(window) = self.window.clone() {',
+    '''                WindowEvent::RedrawRequested => {
+                // Complete the last browser read on the emulator thread.
+                let completed = { self.disc_response.borrow_mut().take() };
+                if let Some(response) = completed {
+                    let result = self.emulator.complete_async_dvd_read(response);
+                    if let Err(error) = result {
+                        web_sys::console::error_1(&wasm_bindgen::JsValue::from_str(&error));
+                    }
+                    self.disc_read_in_flight = false;
+                }
+
+                // Start at most one async read. The response is applied on a
+                // later redraw so no mutable emulator borrow crosses an await.
+                if !self.disc_read_in_flight {
+                    if let (Some(request), Some(reader)) =
+                        (self.emulator.pending_async_dvd_read(), self.disc_reader.clone())
+                    {
+                        self.disc_read_in_flight = true;
+                        let response_slot = self.disc_response.clone();
+                        wasm_bindgen_futures::spawn_local(async move {
+                            let response = match reader.read_range(request.offset, request.length).await {
+                                Ok(bytes) => DiscReadResponse::Data { id: request.id, bytes },
+                                Err(error) => DiscReadResponse::Error {
+                                    id: request.id,
+                                    message: error.as_string().unwrap_or_else(|| format!("{error:?}")),
+                                },
+                            };
+                            *response_slot.borrow_mut() = Some(response);
+                        });
+                    }
+                }
+
+                if let Some(window) = self.window.clone() {'''
+)
+
+replace_once(
+    web_rs,
+    '        state: Rc::new(RefCell::new(None)),',
+    '        state: Rc::new(RefCell::new(None)),\\n        disc_reader,\\n        disc_response: Rc::new(RefCell::new(None)),\\n        disc_read_in_flight: false,'
+)
+
+replace_once(
+    web_html,
+    '            let mut romData = null;',
+    '            let mut romData = null;\\n            let mut selectedFile = null;'
+)
+
+replace_once(
+    web_html,
+    '                romData = null;\\n                romName = file.name;',
+    '                romData = null;\\n                selectedFile = file;\\n                romName = file.name;'
+)
+
+replace_once(
+    web_html,
+    '                    start_emulator(selectedRom, romName, dspData ?? undefined);',
+    '                    start_emulator(selectedRom, romName, dspData ?? undefined, selectedFile ?? undefined);'
+)
+
 print("Patched Gecko web frontend for Wii ISO/RVZ boot.")
