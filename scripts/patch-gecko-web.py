@@ -161,7 +161,12 @@ replace_once(
 replace_once(
     web_html,
     '        <button id="start" disabled>Start</button>',
-    '        <button id="start" disabled>Start</button>\n        <div id="boot-status" role="status" aria-live="polite" style="max-width: min(90vw, 720px); white-space: pre-wrap; overflow-wrap: anywhere; color: #ddd; font: 13px/1.5 system-ui, sans-serif;"></div>'
+    '        <button id="start" disabled>Start</button>'
+)
+replace_once(
+    web_html,
+    '    </div>\n\n    <script type="module">',
+    '    </div>\n    <div id="boot-status" role="status" aria-live="polite" style="position: fixed; top: 8px; left: 8px; right: 8px; z-index: 10; max-height: 30vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: #fff; background: #111d; padding: 8px; border-radius: 6px; font: 13px/1.5 system-ui, sans-serif;"></div>\n\n    <script type="module">'
 )
 replace_once(
     web_html,
