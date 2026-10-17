@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wii Web — OPFS streaming feasibility test</title>
+<style>
+:root{color-scheme:dark}body{font:16px system-ui,sans-serif;max-width:760px;margin:0 auto;padding:24px;background:#111827;color:#f3f4f6}
+h1{font-size:1.5rem}p,li{line-height:1.5;color:#d1d5db}.panel{background:#1f2937;border-radius:12px;padding:16px;margin:16px 0}
+button,input{font:inherit;margin:6px 0}button{padding:10px 14px;border:0;border-radius:8px;background:#60a5fa;color:#111827;font-weight:700}
+button:disabled{opacity:.45}progress{width:100%;height:18px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#030712;padding:12px;border-radius:8px;min-height:70px}
+.warning{color:#fbbf24}.small{font-size:.9rem}
+</style>
+</head>
+<body>
+<h1>OPFS streaming feasibility test</h1>
+<p>This page tests one prerequisite for a future low-memory Wii disc reader: whether this browser can store a selected file in Origin Private File System (OPFS) and read fixed-size ranges synchronously from a dedicated worker.</p>
+<div class="panel">
+  <label for="disc"><strong>Choose a test file (start with a small file):</strong></label><br>
+  <input id="disc" type="file" accept=".iso,.rvz,.bin,.dat,*/*"><br>
+  <button id="run" disabled>Run local test</button>
+  <button id="remove">Delete test copy</button>
+  <progress id="progress" max="100" value="0"></progress>
+  <p id="status">No file selected.</p>
+</div>
+<div class="panel">
+  <strong>Results</strong>
+  <pre id="log">No test run yet.</pre>
+</div>
+<p class="warning"><strong>Important:</strong> This is only a browser capability test, not a Wii emulator fix. It copies the chosen file into browser-managed local storage, so it needs roughly the same amount of free storage as the file and may take time. It does not upload the file. Start with a small homebrew/test file; do not try a multi-gigabyte image until the small-file test succeeds.</p>
+<p class="small">The test copy is stored only for this website origin. Use “Delete test copy” to remove it. Browser storage can also be cleared from browser settings.</p>
+<script>
+const picker = document.getElementById('disc');
+const run = document.getElementById('run');
+const remove = document.getElementById('remove');
+const status = document.getElementById('status');
+const log = document.getElementById('log');
+const progress = document.getElementById('progress');
+let selectedFile = null;
+const TEST_NAME = 'wii-streaming-feasibility-test.bin';
+const fmt = n => (n / 1024 / 1024).toFixed(1) + ' MiB';
+function writeLog(lines) { log.textContent = lines.join('\n'); }
+picker.addEventListener('change', () => {
+  selectedFile = picker.files && picker.files[0] || null;
+  run.disabled = !selectedFile;
+  status.textContent = selectedFile ? selectedFile.name + ' — ' + fmt(selectedFile.size) : 'No file selected.';
+  progress.value = 0;
+});
+remove.addEventListener('click', async () => {
+  try {
+    const root = await navigator.storage.getDirectory();
+    await root.removeEntry(TEST_NAME);
+    status.textContent = 'Stored test copy deleted.';
+    writeLog(['Deleted OPFS file: ' + TEST_NAME]);
+  } catch (e) {
+    status.textContent = 'No stored test copy found (or deletion failed).';
+    writeLog(['Delete result: ' + (e && e.message || e)]);
+  }
+});
+run.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  run.disabled = true;
+  picker.disabled = true;
+  progress.value = 0;
+  const lines = [];
+  const add = s => { lines.push(s); writeLog(lines); };
+  try {
+    if (!('storage' in navigator) || !navigator.storage.getDirectory) {
+      throw new Error('OPFS is not available in this browser/context.');
+    }
+    add('1/4: Checking secure context and OPFS…');
+    add('Secure context: ' + isSecureContext);
+    const root = await navigator.storage.getDirectory();
+    const estimate = await navigator.storage.estimate();
+    add('Origin storage estimate: ' + (estimate.quota ? fmt(estimate.quota) : 'unknown quota'));
+    add('Origin storage currently used: ' + (estimate.usage ? fmt(estimate.usage) : 'unknown'));
+    if (estimate.quota && selectedFile.size > estimate.quota - (estimate.usage || 0)) {
+      add('Warning: selected file is larger than estimated remaining origin quota; copy may fail.');
+    }
+    add('2/4: Copying selected file into local OPFS in 4 MiB chunks…');
+    const handle = await root.getFileHandle(TEST_NAME, {create:true});
+    const writable = await handle.createWritable();
+    const chunkSize = 4 * 1024 * 1024;
+    try {
+      for (let offset = 0; offset < selectedFile.size; offset += chunkSize) {
+        const chunk = selectedFile.slice(offset, Math.min(offset + chunkSize, selectedFile.size));
+        await writable.write({type:'write', position:offset, data:chunk});
+        progress.value = selectedFile.size ? Math.round(Math.min(offset + chunk.size, selectedFile.size) / selectedFile.size * 70) : 70;
+        status.textContent = 'Copying locally: ' + fmt(Math.min(offset + chunk.size, selectedFile.size)) + ' / ' + fmt(selectedFile.size);
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      await writable.truncate(selectedFile.size);
+      await writable.close();
+    } catch (e) {
+      try { await writable.abort(); } catch {}
+      throw e;
+    }
+    add('Copy complete. No network transfer was performed.');
+    add('3/4: Starting a dedicated worker and opening a synchronous OPFS access handle…');
+    const workerSource = `
+      self.onmessage = async ({data}) => {
+        try {
+          if (!('storage' in navigator) || !navigator.storage.getDirectory) throw new Error('OPFS unavailable in worker');
+          const root = await navigator.storage.getDirectory();
+          const file = await root.getFileHandle(data.name);
+          const access = await file.createSyncAccessHandle();
+          const size = access.getSize();
+          const chunk = new Uint8Array(Math.min(65536, Math.max(0, size)));
+          const read = size ? access.read(chunk, {at: Math.max(0, Math.floor(size / 2) - Math.floor(chunk.length / 2))}) : 0;
+          let checksum = 0;
+          for (let i = 0; i < read; i += Math.max(1, Math.floor(read / 32))) checksum = (checksum + chunk[i]) >>> 0;
+          access.close();
+          self.postMessage({ok:true, size, read, checksum});
+        } catch (e) { self.postMessage({ok:false, error: e && e.message || String(e)}); }
+      };
+    `;
+    const workerUrl = URL.createObjectURL(new Blob([workerSource], {type:'text/javascript'}));
+    const result = await new Promise((resolve, reject) => {
+      const worker = new Worker(workerUrl);
+      const timeout = setTimeout(() => { worker.terminate(); reject(new Error('Worker test timed out after 20 seconds')); }, 20000);
+      worker.onmessage = e => { clearTimeout(timeout); worker.terminate(); resolve(e.data); };
+      worker.onerror = e => { clearTimeout(timeout); worker.terminate(); reject(new Error(e.message || 'Worker failed')); };
+      worker.postMessage({name:TEST_NAME});
+    });
+    URL.revokeObjectURL(workerUrl);
+    add('4/4: Worker range-read result:');
+    if (!result.ok) throw new Error(result.error);
+    add('OPFS file size: ' + result.size + ' bytes');
+    add('Bytes read from middle range: ' + result.read);
+    add('Sample checksum: ' + result.checksum);
+    add('PASS: This browser supports the tested OPFS synchronous worker read path.');
+    add('LIMIT: This does not prove the Gecko emulator can use the path yet; its renderer/emulation execution model must be adapted.');
+    progress.value = 100;
+    status.textContent = 'Capability test passed. Stored test copy remains in OPFS until deleted.';
+  } catch (e) {
+    add('FAIL: ' + (e && e.message || String(e)));
+    add('The test copy may be incomplete. Use “Delete test copy” before retrying if needed.');
+    status.textContent = 'Test failed. See results below.';
+  } finally {
+    run.disabled = !selectedFile;
+    picker.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
