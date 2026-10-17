@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wii NKit FST Parse Test</title>
+<style>body{font:16px system-ui,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;line-height:1.5}button,input{font:inherit;padding:10px;margin:6px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f2f2f2;color:#111;padding:14px;border-radius:8px}</style></head>
+<body><h1>Wii NKit FST parse test</h1><p>Reads the FST and a few small file samples from your selected local ISO. The complete ISO is not uploaded or copied.</p>
+<label for="iso">Select Super Mario Galaxy NKit ISO:</label><br><input id="iso" type="file" accept=".iso,.nkit.iso,application/octet-stream"><br><button id="run">Parse FST and probe files</button><pre id="out">Choose the file, then run the test.</pre>
+<script>
+const input=document.getElementById("iso"),out=document.getElementById("out");
+document.getElementById("run").addEventListener("click",()=>{const file=input.files?.[0];if(!file){out.textContent="Select the ISO first.";return;}out.textContent="Reading FST…";const w=new Worker("./wii-nkit-fst-parse-worker.js");w.onmessage=e=>{out.textContent=e.data;w.terminate();};w.onerror=e=>{out.textContent="Worker error: "+e.message;w.terminate();};w.postMessage({file});});
+</script></body></html>
