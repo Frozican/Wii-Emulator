@@ -7,7 +7,7 @@ A mobile-first static website exploring browser-based GameCube/Wii emulation, ho
 - The main page is a mobile-first project frontend.
 - GitHub Actions checks out the open-source [Gecko emulator](https://github.com/ioncodes/gecko), builds its WebAssembly frontend, and publishes it under `/gecko/`.
 - Open the experimental engine at [https://frozican.github.io/Wii-Emulator/gecko/](https://frozican.github.io/Wii-Emulator/gecko/).
-- **Important limitation:** Gecko's current web entry point accepts DOL homebrew executables or IPL files. This integration does not yet boot Wii ISO/RVZ disc images. The upstream browser input path currently uses keyboard controls; this site has not connected its touch buttons to Gecko.
+- **Important limitation:** Gecko's current web entry point accepts DOL homebrew executables or IPL files. This integration does not yet boot Wii ISO/RVZ disc images. The current browser input path uses keyboard controls; custom touch controls are out of scope.
 
 ## GitHub Pages
 
@@ -27,5 +27,5 @@ A mobile-first static website exploring browser-based GameCube/Wii emulation, ho
 
 1. Verify the generated Gecko runtime boots on desktop and Android browsers.
 2. Extend the browser interface and emulator API to load Wii disc images (ISO/RVZ), including any required disc filesystem and boot path.
-3. Connect touch controls to emulator input, including pointer/touch lifecycle and motion input where supported.
+3. Implement and test the Wii disc-image loading and boot path.
 4. Measure memory use and performance on mobile devices before calling it playable.
