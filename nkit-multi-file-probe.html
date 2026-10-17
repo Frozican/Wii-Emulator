@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NKit multi-file range probe</title>
+<style>body{font:16px system-ui,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;line-height:1.5}input,button{font:inherit;padding:10px;margin:6px 0;max-width:100%;box-sizing:border-box}label{display:block;margin-top:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f2f2f2;color:#111;padding:14px;border-radius:8px}</style></head>
+<body><h1>NKit multi-file range probe</h1>
+<p>Experimental check: reads 16-byte samples from the beginning, middle, and end of several known files using small File.slice() ranges. It does not copy the ISO or whole files.</p>
+<label for="iso">Super Mario Galaxy NKit ISO</label><input id="iso" type="file" accept=".iso,.nkit.iso,application/octet-stream">
+<br><button id="run">Run multi-file probe</button><pre id="out">Choose the ISO, then run the probe.</pre>
+<p><small>A PASS validates only these sampled offsets, not full NKit decoding or game boot.</small></p>
+<script>
+const $=id=>document.getElementById(id),out=$("out");
+$("run").onclick=()=>{const file=$("iso").files?.[0];if(!file){out.textContent="Select the ISO first.";return;}
+out.textContent="Scanning FST and reading small sample ranges…";
+const worker=new Worker("./nkit-multi-file-probe-worker.js?v=1");
+worker.onmessage=e=>{out.textContent=e.data;worker.terminate();};
+worker.onerror=e=>{out.textContent="Worker error: "+e.message;worker.terminate();};
+worker.postMessage({file});};
+</script></body></html>
