@@ -31,6 +31,11 @@ self.onmessage = async ({data}) => {
   const packedGroups=Math.ceil(partitionLengthBytes/0x200000),packedMaskBytes=Math.ceil(packedGroups/8);
   const tailStart=Math.max(0,file.size-32),tail=await read(tailStart,file.size-tailStart);
   const tailHex=Array.from(tail,b=>b.toString(16).padStart(2,"0")).join(" ");
+  const hexAt=async(o,n)=>Array.from(await read(o,n),b=>b.toString(16).padStart(2,"0")).join(" ");
+  const firstFilePhysicalGuess=dataStart+(firstFile?.offset||0);
+  const fstEndWindow=await hexAt(fstEnd,0x80);
+  const firstFileWindow=await hexAt(firstFilePhysicalGuess,0x40);
+  const rawGapCandidate=await hexAt(dataStart+fstEndLogical,0x80);
   const lines=[
    "PASS — NKit filesystem-gap probe (gap location corrected)",
    `Disc RMGE01; image size ${file.size.toLocaleString("en-US")} bytes`,
@@ -43,6 +48,9 @@ self.onmessage = async ({data}) => {
    `Logical gap expected from FST end to first file: ${expectedGap===null?"unknown":hx(expectedGap)} bytes`,
    `Mask-size estimate using original whole-disc length: ${sourceMaskBytes} bytes (${sourceGroups} groups; not confirmed as partition mask)`,
    `Mask-size estimate using compact partition length: ${packedMaskBytes} bytes (${packedGroups} groups; not confirmed)`,
+   `Bytes at physical FST end (first 128): ${fstEndWindow}`,
+   `Bytes at dataStart + first logical file offset (${hx(firstFilePhysicalGuess)}): ${firstFileWindow}`,
+   `Bytes at dataStart + logical FST end (${hx(dataStart+fstEndLogical)}): ${rawGapCandidate}`,
    `Last 32 file bytes @ ${hx(tailStart)}: ${tailHex}`,
    "",
    "First files sorted by FST offset (both Wii offsets and sizes multiplied by 4):",
