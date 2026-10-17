@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wii NKit Sector Mapping Test</title>
+<style>:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10131a;color:#eef2ff}body{max-width:900px;margin:0 auto;padding:18px}h1{font-size:1.4rem}p{line-height:1.5;color:#c6cce0}.panel{background:#1a2030;border:1px solid #303a51;border-radius:12px;padding:14px;margin:12px 0}input,button{font:inherit;max-width:100%}button{font-weight:650;border:0;border-radius:10px;padding:12px 16px;background:#8db7ff;color:#10131a}button:disabled{opacity:.55}#status{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45;font-size:.92rem}.small{font-size:.9rem;color:#aeb8d2}</style></head>
+<body><h1>Wii NKit Sector Mapping Test</h1>
+<p>This diagnostic compares raw bytes with logical Wii partition reads that skip each physical sector's 0x400-byte hash area. It applies the Wii header offset shift (raw offsets multiplied by four) and checks candidate FST root entries. It reads small local ranges only; it does not upload or copy the ISO.</p>
+<div class="panel"><input id="file" type="file" accept=".iso,.nkit.iso,application/octet-stream"><p><button id="run">Run sector mapping test</button></p><div id="status">Choose your Super Mario Galaxy NKit ISO, then run the test.</div></div>
+<p class="small">Important: this test does not decrypt encrypted Wii partition payload or fully validate NKit repair behavior. A plausible FST root is a clue, not proof of complete compatibility.</p>
+<script>
+const fi=document.getElementById('file'),btn=document.getElementById('run'),status=document.getElementById('status');
+btn.addEventListener('click',()=>{const file=fi.files&&fi.files[0];if(!file){status.textContent='Choose an ISO file first.';return}btn.disabled=true;status.textContent='Starting local Worker…';const w=new Worker('./wii-nkit-sector-mapping-worker.js');w.onmessage=e=>{const d=e.data||{};if(d.status)status.textContent=d.status;if('ok'in d){status.textContent=(d.ok?'PASS':'FAIL')+'\n'+d.message;btn.disabled=false;w.terminate()}};w.onerror=e=>{status.textContent='WORKER ERROR\n'+(e.message||'Unknown error');btn.disabled=false;w.terminate()};w.postMessage({file})});
+</script></body></html>
