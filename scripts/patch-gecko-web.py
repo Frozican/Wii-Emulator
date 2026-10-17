@@ -453,7 +453,7 @@ replace_once(
 
 replace_once(
     web_html,
-    '            let mut romData = null;',
+    '            let romData = null;',
     '            let mut romData = null;\n            let mut selectedFile = null;'
 )
 
