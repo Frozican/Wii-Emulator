@@ -35,6 +35,7 @@ self.onmessage = async (event) => {
       // the GameCube-style header FST fields can be zero and are not the right path.
       const partitionInfo = await readRange(file, 0x40000, 0x20);
       const groups = [];
+      const partitionDetails = [];
       for (let group = 0; group < 4; group++) {
         const base = group * 8;
         const count = be32(partitionInfo, base);
@@ -47,6 +48,35 @@ self.onmessage = async (event) => {
             offset: be32(entry, 0) * 4,
             type: be32(entry, 4)
           };
+          if (firstPartition.offset + 0x2C0 <= file.size) {
+            const partHeader = await readRange(file, firstPartition.offset, 0x2C0);
+            const tmdSizeRaw = be32(partHeader, 0x2A4);
+            const tmdOffsetRaw = be32(partHeader, 0x2A8);
+            const certSizeRaw = be32(partHeader, 0x2AC);
+            const certOffsetRaw = be32(partHeader, 0x2B0);
+            const h3OffsetRaw = be32(partHeader, 0x2B4);
+            const dataOffsetRaw = be32(partHeader, 0x2B8);
+            const dataSizeRaw = be32(partHeader, 0x2BC);
+            const dataOffset = firstPartition.offset + dataOffsetRaw * 4;
+            const dataSize = dataSizeRaw * 4;
+            let dataPrefix = '(not read: invalid data range)';
+            if (dataOffsetRaw > 0 && dataSizeRaw > 0 && dataOffset + 0x40 <= file.size && dataOffset + dataSize <= file.size) {
+              const prefix = await readRange(file, dataOffset, 0x40);
+              dataPrefix = Array.from(prefix).map(x => x.toString(16).padStart(2, '0')).join(' ');
+            }
+            partitionDetails.push(
+              'First partition header at: 0x' + firstPartition.offset.toString(16) +
+              '\nTMD size: ' + (tmdSizeRaw * 4).toLocaleString() + ' bytes; TMD offset relative to partition: 0x' + (tmdOffsetRaw * 4).toString(16) +
+              '\nCertificate size: ' + (certSizeRaw * 4).toLocaleString() + ' bytes; certificate offset relative to partition: 0x' + (certOffsetRaw * 4).toString(16) +
+              '\nH3 table offset relative to partition: 0x' + (h3OffsetRaw * 4).toString(16) +
+              '\nData area offset relative to partition: 0x' + (dataOffsetRaw * 4).toString(16) +
+              '\nData area size: ' + dataSize.toLocaleString() + ' bytes' +
+              '\nData area absolute offset: 0x' + dataOffset.toString(16) +
+              '\nFirst 64 data-area bytes (still encrypted/raw): ' + dataPrefix
+            );
+          } else {
+            partitionDetails.push('Partition header would exceed the selected file; stopped before reading it.');
+          }
         }
         groups.push('Group ' + group + ': count=' + count +
           ', tableOffsetRaw=0x' + tableOffsetRaw.toString(16) +
@@ -61,7 +91,8 @@ self.onmessage = async (event) => {
         '\nPartition table bytes read: ' + partitionInfo.length.toLocaleString() +
         '\nTotal bytes read by test: ' + (header.length + partitionInfo.length).toLocaleString() +
         '\nWhole file copied: NO\n\nPartition table diagnostics:\n' + groups.join('\n') +
-        '\n\nThis confirms only disc-header/partition-table range reads. Reading game files requires Wii partition handling/decryption and possibly NKit-specific support.'
+        (partitionDetails.length ? '\n\nPartition header diagnostics:\n' + partitionDetails.join('\n\n') : '') +
+        '\n\nThis confirms only metadata/range reads. The data-area prefix is not decrypted; booting still requires Wii partition key handling and possibly NKit-specific support.'
       });
       return;
     }
