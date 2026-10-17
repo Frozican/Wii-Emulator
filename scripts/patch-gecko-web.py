@@ -409,7 +409,7 @@ replace_once(
 
 replace_once(
     web_rs,
-    '                WindowEvent::RedrawRequested => {\n                if let Some(window) = self.window.clone() {',
+    '            WindowEvent::RedrawRequested => {\n                if let Some(window) = self.window.clone() {',
     '''                WindowEvent::RedrawRequested => {
                 // Complete the last browser read on the emulator thread.
                 let completed = { self.disc_response.borrow_mut().take() };
