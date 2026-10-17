@@ -315,7 +315,11 @@ replace_once(
                 try {
                     await wasmReady;
                     document.getElementById('setup').style.display = 'none';
-                    start_emulator(romData, romName, dspData ?? undefined);
+                    const selectedRom = romData;
+                    start_emulator(selectedRom, romName, dspData ?? undefined);
+                    // wasm-bindgen has copied the bytes into Rust-owned memory;
+                    // release the JavaScript reference so it can be reclaimed.
+                    romData = null;
                 } catch (error) {
                     romNameEl.textContent = 'Could not start emulator: ' + (error?.message ?? 'unknown error');
                     console.error('Failed to start emulator', error);
