@@ -37,8 +37,9 @@ self.onmessage=async({data})=>{
   for(const name of targets){
    const f=entries.find(e=>e.name.toLowerCase()===name.toLowerCase());
    if(!f){lines.push("FAIL missing FST file: "+name);failures++;continue;}
-   const samples=[["start",0,64],["middle",Math.floor(f.size/2),64],["end",f.size-64,64],["cross-chunk",Math.max(0,Math.floor(f.size/2/CHUNK)*CHUNK-16),64]];
-   lines.push(name+" | file size "+f.size.toLocaleString("en-US")+" | ISO base "+hx(dataStart+f.offset));
+   const physicalBase=dataStart+f.offset;const boundaryLocal=CHUNK-(physicalBase%CHUNK)-16;const crossOffset=boundaryLocal>=0?boundaryLocal:boundaryLocal+CHUNK;
+   const samples=[["start",0,64],["middle",Math.floor(f.size/2),64],["end",f.size-64,64],["cross-chunk",crossOffset,64]];
+   lines.push(name+" | file size "+f.size.toLocaleString("en-US")+" | ISO base "+hx(physicalBase));
    for(const [label,off,len] of samples){
     if(off<0||off+len>f.size){lines.push("  FAIL "+label+": invalid file-local range");failures++;continue;}
     const physical=dataStart+f.offset+off;
