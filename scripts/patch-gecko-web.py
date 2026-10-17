@@ -102,6 +102,19 @@ replace_once(
 
 replace_once(
     web_rs,
+    '''    if let Some(irom) = dsp_irom {
+        emulator.dsp.load_irom(&irom);
+    }''',
+    '''    if let Some(irom) = dsp_irom {
+        match &mut emulator {
+            Emulator::GameCube(emulator) => emulator.dsp.load_irom(&irom),
+            Emulator::Wii(emulator) => emulator.dsp.load_irom(&irom),
+        }
+    }'''
+)
+
+replace_once(
+    web_rs,
     '''    let input = HostInput::gc_connected();
     emulator.apply_host_input(&input);''',
     '''    let input = if emulator.is_wii() {
