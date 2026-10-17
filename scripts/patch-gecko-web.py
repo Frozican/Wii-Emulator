@@ -228,8 +228,21 @@ replace_once(
                 }
                 romData = null;
                 romName = file.name;
-                romNameEl.textContent = file.name + ' (reading...)';
                 startBtn.disabled = true;
+
+                // Check before allocating the file-sized Uint8Array. The current
+                // core duplicates the full image during parsing, so multi-GB Wii
+                // images are unsafe on phones even though File.slice() is available.
+                const deviceMemoryGb = navigator.deviceMemory || 4;
+                const estimatedPeakGb = (file.size * 2) / (1024 * 1024 * 1024);
+                if (estimatedPeakGb > deviceMemoryGb * 0.6) {
+                    romNameEl.textContent = 'Image not loaded to protect browser memory: estimated peak ' +
+                        estimatedPeakGb.toFixed(1) + ' GB, device memory estimate ' +
+                        deviceMemoryGb + ' GB. Full-disc streaming is not integrated yet; use a smaller RVZ or wait for streaming support.';
+                    return;
+                }
+
+                romNameEl.textContent = file.name + ' (reading...)';
                 try {
                     romData = await readFile(file, (loaded, total) => {
                         romNameEl.textContent = file.name + ' (' +
