@@ -44,11 +44,6 @@ replace_once(
     'enum Emulator {\n    GameCube(GameCube),\n    Wii(Wii),\n}\n\nimpl Emulator {\n    fn apply_host_input(&mut self, input: &HostInput) {\n        match self {\n            Self::GameCube(emulator) => emulator.apply_host_input(input),\n            Self::Wii(emulator) => emulator.apply_host_input(input),\n        }\n    }\n\n    fn is_wii(&self) -> bool {\n        matches!(self, Self::Wii(_))\n    }\n}\n\nstruct App {\n    emulator: Emulator,'
 )
 
-replace_once(
-    web_rs,
-    '                    self.emulator.apply_host_input(&self.input);',
-    '                    self.emulator.apply_host_input(&self.input);',
-)
 # Render through the appropriate concrete system type.
 replace_once(
     web_rs,
