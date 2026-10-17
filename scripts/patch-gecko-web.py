@@ -282,7 +282,7 @@ replace_once(
                     romData[0x201] === 0x4b &&
                     romData[0x202] === 0x49 &&
                     romData[0x203] === 0x54) {
-                    romNameEl.textContent = 'NKit ISO detected: restoration is not implemented yet. This image can be inspected, but cannot boot in this build. Use a fully restored Wii ISO or RVZ image.';
+                    romNameEl.textContent = 'BOOT BLOCKED: NKit ISO detected. The browser can read its metadata, but Gecko needs the disc restored first. Convert this file to a fully restored Wii ISO or RVZ with NKit Processing before the first boot attempt.';
                     return;
                 }
 
@@ -316,6 +316,7 @@ replace_once(
                     await wasmReady;
                     document.getElementById('setup').style.display = 'none';
                     const selectedRom = romData;
+                    console.info('[Wii boot attempt] Starting Gecko with', romName, '(' + selectedRom.byteLength + ' bytes). A successful handoff does not guarantee that the game reaches gameplay.');
                     start_emulator(selectedRom, romName, dspData ?? undefined);
                     // wasm-bindgen has copied the bytes into Rust-owned memory;
                     // release the JavaScript reference so it can be reclaimed.
