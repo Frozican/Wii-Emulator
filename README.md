@@ -30,4 +30,4 @@ A mobile-first static website exploring browser-based GameCube/Wii emulation, ho
 2. Implement a resumable/asynchronous disc-read path; the current core expects synchronous reads.
 3. Decode NKit gap/partition data correctly without retaining the whole ISO in RAM.
 4. Connect the reader to the Wii apploader and DVD interface, then test boot.
-5. Add mobile touch controls and measure memory/performance on Android before calling it playable.
+5. Measure memory/performance on Android and verify sustained gameplay before calling it playable. Mobile touch controls are out of scope.
