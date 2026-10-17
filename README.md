@@ -1,31 +1,31 @@
 # Wii Web
 
-A mobile-first static website prototype for a future browser-based Wii emulator.
+A mobile-first static website exploring browser-based GameCube/Wii emulation, hosted on GitHub Pages without a custom server.
 
 ## Current status
 
-This repository currently contains the responsive frontend, local game-file picker, and placeholder touch controls. **It does not emulate or run Wii games yet.** A compatible WebAssembly emulation runtime must be built and integrated before game files can boot.
+- The main page is a mobile-first project frontend.
+- GitHub Actions checks out the open-source [Gecko emulator](https://github.com/ioncodes/gecko), builds its WebAssembly frontend, and publishes it under `/gecko/`.
+- Open the experimental engine at [https://frozican.github.io/Wii-Emulator/gecko/](https://frozican.github.io/Wii-Emulator/gecko/).
+- **Important limitation:** Gecko's current web entry point accepts DOL homebrew executables or IPL files. This integration does not yet boot Wii ISO/RVZ disc images. The upstream browser input path currently uses keyboard controls; this site has not connected its touch buttons to Gecko.
 
 ## GitHub Pages
 
 1. Open [Settings → Pages](https://github.com/Frozican/Wii-Emulator/settings/pages).
-2. Under **Build and deployment → Source**, select **GitHub Actions** and save if prompted. This matches `.github/workflows/pages.yml`.
-3. Open the [Actions tab](https://github.com/Frozican/Wii-Emulator/actions) and select **Deploy static site to GitHub Pages** (workflow file: `pages.yml`). Check the latest run.
-4. When the deployment succeeds, the site should be available at [https://frozican.github.io/Wii-Emulator/](https://frozican.github.io/Wii-Emulator/). First publication may take a few minutes.
+2. Under **Build and deployment → Source**, select **GitHub Actions**.
+3. Check the [Actions tab](https://github.com/Frozican/Wii-Emulator/actions) for the workflow **Build Gecko WASM and deploy Wii Web**. The first build may take several minutes.
+4. Visit [Wii Web](https://frozican.github.io/Wii-Emulator/) after a successful deployment.
 
-No server or backend is required for this frontend.
+## Browser and file notes
 
-## Mobile notes
+- Game/homebrew files are selected locally; this project does not upload them to a server.
+- WebAssembly and WebGPU support vary by browser and device. A successful build does not guarantee that every Android device can run the emulator smoothly.
+- The main page's ISO/RVZ picker is currently informational only. Do not mistake file selection for game boot support.
+- Use only game images and system files you are legally entitled to use. This repository does not include commercial games or Nintendo firmware.
 
-- Designed for Android browsers in portrait and landscape.
-- Game files are selected locally in the browser; this page does not upload them.
-- Large disc images can exceed available phone memory.
-- File picker acceptance does not mean the selected format is supported by an emulator engine.
+## Next engineering milestones
 
-## Emulator engine investigation
-
-[Gecko](https://github.com/ioncodes/gecko) is an open-source GameCube/Wii emulator with a WebAssembly frontend under `crates/web`. Its current browser build and mobile compatibility need to be tested before it can be treated as a working Wii emulator. Do not copy copyrighted Wii system files or game images into this repository.
-
-## Legal note
-
-Use game images and system files that you are legally entitled to use. This project does not include commercial games or Nintendo system firmware.
+1. Verify the generated Gecko runtime boots on desktop and Android browsers.
+2. Extend the browser interface and emulator API to load Wii disc images (ISO/RVZ), including any required disc filesystem and boot path.
+3. Connect touch controls to emulator input, including pointer/touch lifecycle and motion input where supported.
+4. Measure memory use and performance on mobile devices before calling it playable.
