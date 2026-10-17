@@ -15,8 +15,9 @@ self.onmessage=async({data})=>{
   const count=u32(fst,8),stringsAt=count*12;if(!count||count>100000||stringsAt>fst.length)throw Error("Invalid FST");
   const decoder=new TextDecoder(),entries=[];
   for(let i=1;i<count;i++){const word=u32(fst,i*12);if((word>>>24)===1)continue;const no=word&0xffffff;let end=stringsAt+no;while(end<fst.length&&fst[end])end++;entries.push({name:decoder.decode(fst.slice(stringsAt+no,end)),offset:u32(fst,i*12+4)*4,size:u32(fst,i*12+8)});}
-  const found=entries.find(e=>e.name===name);
-  if(!found){const matches=entries.filter(e=>e.name.toLowerCase().includes(String(name).toLowerCase())).slice(0,25);return self.postMessage("File path not found exactly: "+name+"\n\nPossible matches:\n"+(matches.map(e=>e.name).join("\n")||"(none)")+"\n\nFST entries scanned: "+entries.length);}
+  const requested=String(name).replace(/\\\\/g,"/").split("/").filter(Boolean).pop().toLowerCase();
+  const found=entries.find(e=>e.name===name)||entries.find(e=>e.name.toLowerCase()===requested);
+  if(!found){const needle=String(name).toLowerCase().split(/[\\\\/]/).filter(Boolean).pop()||String(name).toLowerCase();const matches=entries.filter(e=>e.name.toLowerCase().includes(needle)).slice(0,25);return self.postMessage("File not found: "+name+"\\nThe FST reader currently indexes leaf filenames, not full directory paths.\\n\\nPossible filename matches:\\n"+(matches.map(e=>e.name).join("\\n")||"(none)")+"\\n\\nFST entries scanned: "+entries.length);}
   if(offset>found.size||length>found.size-offset)throw Error("Requested range exceeds file size. File size is "+found.size+" bytes.");
   const physical=dataStart+found.offset+offset,bytes=await read(physical,length);
   const result=[
