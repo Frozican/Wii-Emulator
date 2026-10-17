@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>No-copy disc range-read test</title>
+<style>
+:root{color-scheme:dark;--bg:#10131b;--panel:#1a2030;--text:#edf1f7;--muted:#aeb8ca;--accent:#7dd3fc;--line:#354056}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:760px;margin:auto;padding:24px 16px 48px}h1{font-size:1.65rem;line-height:1.2}p{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin:16px 0}
+button,input{font:inherit}button{background:var(--accent);color:#07131b;border:0;border-radius:9px;padding:10px 14px;font-weight:700;margin:8px 8px 0 0}button:disabled{opacity:.5}input{display:block;max-width:100%;margin:12px 0}
+#status{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b0e14;border-radius:10px;padding:12px;min-height:100px;color:#dbeafe;font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+.note{border-left:3px solid var(--accent);padding-left:12px}a{color:var(--accent)}
+</style>
+</head>
+<body><main>
+<h1>No-copy disc range-read test</h1>
+<p>This isolated test checks whether your browser can read selected disc-file ranges asynchronously without first copying the entire file into browser storage.</p>
+<div class="panel">
+<strong>1. Choose your Wii ISO</strong>
+<input id="file" type="file" accept=".iso,.wbfs,.rvz,application/octet-stream">
+<div id="fileInfo">No file selected.</div>
+<button id="run" disabled>Test random range reads</button>
+<button id="clear" disabled>Clear results</button>
+</div>
+<div class="panel">
+<strong>2. Test log</strong>
+<div id="status" role="status" aria-live="polite">Waiting for a file.</div>
+</div>
+<div class="panel note">
+<strong>What this test does and does not prove</strong>
+<p>It sends the selected browser File object to a dedicated worker and reads small byte ranges from the beginning, quarter points, midpoint, and end. It does not create a full OPFS copy and does not upload the file.</p>
+<p>A PASS proves only that asynchronous range reads work in this browser. Gecko currently expects synchronous disc reads from memory, so this test alone does not make the emulator stream a game. Integrating range reads still requires changes to the emulator's disc-read architecture.</p>
+<p>Keep the original file where it is. Browser permissions or Android file-provider restrictions may still prevent reading some files.</p>
+</div>
+</main>
+<script>
+const fileInput=document.querySelector('#file');
+const runButton=document.querySelector('#run');
+const clearButton=document.querySelector('#clear');
+const statusBox=document.querySelector('#status');
+const fileInfo=document.querySelector('#fileInfo');
+let workerUrl=null;
+function log(message){statusBox.textContent += (statusBox.textContent ? '\n' : '') + message;}
+function formatBytes(n){return n>=1024**3?(n/1024**3).toFixed(2)+' GiB':n>=1024**2?(n/1024**2).toFixed(1)+' MiB':n.toLocaleString()+' bytes';}
+fileInput.addEventListener('change',()=>{
+ const f=fileInput.files&&fileInput.files[0];
+ runButton.disabled=!f;clearButton.disabled=!f;
+ statusBox.textContent=f?'Ready. No file copy has been made.':'Waiting for a file.';
+ fileInfo.textContent=f?f.name+' — '+formatBytes(f.size):'No file selected.';
+});
+clearButton.addEventListener('click',()=>{statusBox.textContent='Results cleared. No file copy has been made.';});
+runButton.addEventListener('click',async()=>{
+ const file=fileInput.files&&fileInput.files[0];if(!file)return;
+ runButton.disabled=true;fileInput.disabled=true;statusBox.textContent='';
+ try{
+  log('1/3: Checking browser capabilities…');
+  if(!window.isSecureContext)throw new Error('This page is not a secure context. Use the HTTPS GitHub Pages URL.');
+  log('Secure context: true');
+  if(typeof Worker==='undefined')throw new Error('Dedicated Workers are not supported.');
+  if(typeof Blob.prototype.slice!=='function')throw new Error('Blob.slice() is not available.');
+  log('Selected file: '+file.name);
+  log('File size: '+file.size.toLocaleString()+' bytes ('+formatBytes(file.size)+')');
+  log('2/3: Starting worker and passing the File object (no OPFS copy)…');
+  const workerCode = `
+    self.onmessage = async (event) => {
+      const file = event.data;
+      try {
+        const chunkSize = 64 * 1024;
+        const candidates = [0, Math.floor(file.size * 0.25), Math.floor(file.size * 0.5), Math.floor(file.size * 0.75), Math.max(0, file.size - chunkSize)];
+        const offsets = [...new Set(candidates.map(n => Math.max(0, Math.min(n, Math.max(0, file.size - chunkSize)))))];
+        const results = [];
+        for (let i = 0; i < offsets.length; i++) {
+          const offset = offsets[i];
+          const bytes = new Uint8Array(await file.slice(offset, Math.min(file.size, offset + chunkSize)).arrayBuffer());
+          if (bytes.length === 0 && file.size > 0) throw new Error('Empty read at byte ' + offset);
+          let checksum = 2166136261;
+          for (let j = 0; j < bytes.length; j++) checksum = Math.imul(checksum ^ bytes[j], 16777619);
+          results.push({ offset, length: bytes.length, checksum: (checksum >>> 0).toString(16).padStart(8, '0') });
+          self.postMessage({ type: 'progress', index: i + 1, total: offsets.length, result: results[results.length - 1] });
+        }
+        self.postMessage({ type: 'done', size: file.size, results });
+      } catch (error) {
+        self.postMessage({ type: 'error', message: error && error.message ? error.message : String(error) });
+      }
+    };
+  `;
+  const blob=new Blob([workerCode],{type:'text/javascript'});
+  workerUrl=URL.createObjectURL(blob);
+  const worker=new Worker(workerUrl);
+  const result=await new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>{worker.terminate();reject(new Error('Worker timed out after 60 seconds.'));},60000);
+   worker.onmessage=e=>{
+    const d=e.data;
+    if(d.type==='progress')log('Read '+d.index+'/'+d.total+': offset '+d.result.offset.toLocaleString()+', '+d.result.length.toLocaleString()+' bytes, checksum '+d.result.checksum);
+    else if(d.type==='done'){clearTimeout(timer);worker.terminate();resolve(d);}
+    else if(d.type==='error'){clearTimeout(timer);worker.terminate();reject(new Error(d.message));}
+   };
+   worker.onerror=e=>{clearTimeout(timer);worker.terminate();reject(new Error(e.message||'Worker failed.'));};
+   try{worker.postMessage(file);}catch(error){clearTimeout(timer);worker.terminate();reject(error);}
+  });
+  log('3/3: PASS — '+result.results.length+' random ranges read successfully.');
+  log('No complete copy was created. Approximate data read: '+formatBytes(result.results.reduce((sum,r)=>sum+r.length,0))+'.');
+  log('This is a browser feasibility test only, not proof of emulator streaming.');
+ }catch(error){
+  log('FAIL: '+(error&&error.message?error.message:String(error)));
+  log('No full-file OPFS copy was attempted. If the file came from an Android cloud/provider picker, try a copy stored locally on the device.');
+ }finally{
+  if(workerUrl){URL.revokeObjectURL(workerUrl);workerUrl=null;}
+  runButton.disabled=!(fileInput.files&&fileInput.files[0]);fileInput.disabled=false;
+ }
+});
+</script></body></html>
