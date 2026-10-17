@@ -179,7 +179,16 @@ replace_once(
                 // single multi-gigabyte read even when the selected file is valid.
                 // Gecko still needs the complete image in memory after this step.
                 const chunkSize = 16 * 1024 * 1024;
-                const result = new Uint8Array(file.size);
+                let result;
+                try {
+                    result = new Uint8Array(file.size);
+                } catch (error) {
+                    throw new Error('The browser cannot allocate one ' +
+                        (file.size / 1024 / 1024 / 1024).toFixed(2) +
+                        ' GB image buffer. Chunked reading alone cannot fix this: ' +
+                        'the current emulator core keeps the complete disc image in memory. ' +
+                        'Try a smaller RVZ image, or use a device/browser with more available memory.');
+                }
                 for (let offset = 0; offset < file.size; offset += chunkSize) {
                     const end = Math.min(offset + chunkSize, file.size);
                     let buffer;
