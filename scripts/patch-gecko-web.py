@@ -330,8 +330,8 @@ replace_once(
 
 replace_once(
     web_rs,
-    'mod disc_stream;\\n',
-    'mod disc_stream;\\nuse disc_stream::FileRangeReader;\\n'
+    'mod disc_stream;\n',
+    'mod disc_stream;\nuse disc_stream::FileRangeReader;\n'
 )
 
 # Route standard ISO runtime DVD reads through the browser's bounded File reader.
