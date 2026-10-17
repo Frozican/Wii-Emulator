@@ -8,7 +8,7 @@ A mobile-first static website exploring browser-based GameCube/Wii emulation, ho
 - GitHub Actions checks out the open-source [Gecko emulator](https://github.com/ioncodes/gecko), builds its WebAssembly frontend, and publishes it under `/gecko/`.
 - Open the experimental engine at [https://frozican.github.io/Wii-Emulator/gecko/](https://frozican.github.io/Wii-Emulator/gecko/).
 - **Important limitation:** Wii ISO/RVZ boot is still experimental and not verified. The current Gecko boot path loads the full disc image into memory; the streaming reader test is a separate diagnostic and is not yet connected to the emulation core. Keyboard controls are available; mobile touch controls and a successful Android game boot remain unverified.
-- Test the bounded reader and NKit metadata probe at [Reader Test](https://frozican.github.io/Wii-Emulator/reader-test/). The probe checks metadata only; it does not decode the entire NKit image or boot a game.
+- Test the bounded reader and NKit metadata probe at [Reader Test](https://frozican.github.io/Wii-Emulator/reader-test/). The harness also checks that negative, fractional, and past-EOF ranges are rejected. The probe checks metadata only; it does not decode the entire NKit image or boot a game.
 
 ## GitHub Pages
 
