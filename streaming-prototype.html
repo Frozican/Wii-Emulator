@@ -77,16 +77,20 @@ run.addEventListener('click', async () => {
     if (estimate.quota && selectedFile.size > estimate.quota - (estimate.usage || 0)) {
       add('Warning: selected file is larger than estimated remaining origin quota; copy may fail.');
     }
-    add('2/4: Copying selected file into local OPFS in 4 MiB chunks…');
+    add('2/4: Reading the selected file explicitly, then copying into local OPFS in 4 MiB chunks…');
     const handle = await root.getFileHandle(TEST_NAME, {create:true});
     const writable = await handle.createWritable();
     const chunkSize = 4 * 1024 * 1024;
     try {
       for (let offset = 0; offset < selectedFile.size; offset += chunkSize) {
-        const chunk = selectedFile.slice(offset, Math.min(offset + chunkSize, selectedFile.size));
+        const end = Math.min(offset + chunkSize, selectedFile.size);
+        status.textContent = 'Reading local file: ' + fmt(offset) + ' / ' + fmt(selectedFile.size);
+        // Read the selected File/Blob explicitly first. Some mobile file providers
+        // fail when a Blob is handed directly to OPFS writable.write().
+        const chunk = await selectedFile.slice(offset, end).arrayBuffer();
         await writable.write({type:'write', position:offset, data:chunk});
-        progress.value = selectedFile.size ? Math.round(Math.min(offset + chunk.size, selectedFile.size) / selectedFile.size * 70) : 70;
-        status.textContent = 'Copying locally: ' + fmt(Math.min(offset + chunk.size, selectedFile.size)) + ' / ' + fmt(selectedFile.size);
+        progress.value = selectedFile.size ? Math.round(end / selectedFile.size * 70) : 70;
+        status.textContent = 'Copying locally: ' + fmt(end) + ' / ' + fmt(selectedFile.size);
         await new Promise(resolve => setTimeout(resolve, 0));
       }
       await writable.truncate(selectedFile.size);
