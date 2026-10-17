@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10131b">
+  <title>Restore NKit on Android · Wii Web</title>
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    .steps{display:grid;gap:14px}.step{padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)}.step h3{margin:0 0 8px}.step p{margin:8px 0;color:var(--muted)}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b0e14;border:1px solid var(--line);padding:13px;border-radius:10px;color:#dff8ef;font-size:.88rem;overflow-x:auto}.copy{margin-top:8px}.warning{border-left:3px solid #f2c66d;padding:12px;background:#2a251b;border-radius:8px}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Wii Web home"><span class="brand-mark">W</span><span>Wii <b>Web</b></span></a>
+      <span class="status"><i></i> Android guide</span>
+    </header>
+    <section class="hero">
+      <div class="eyebrow">NO SERVER · FILE STAYS ON YOUR PHONE</div>
+      <h1>Restore NKit<br><span>on Android.</span></h1>
+      <p class="intro">GitHub Pages cannot run a native multi-gigabyte restore process itself. This route runs the real open-source nkit2iso tool locally in Termux, then you can select the restored ISO in the experimental emulator.</p>
+      <a class="primary engine-link" href="https://github.com/termux/termux-app/releases/latest" target="_blank" rel="noopener noreferrer">Install Termux from official releases ↗</a>
+    </section>
+    <section class="panel">
+      <div class="warning"><strong>Storage warning</strong><br>Your 3.39 GB NKit file may restore to a roughly 4.7 GB ISO. Make sure you have at least 6 GB free. Do not delete the original file. This may take a while on a phone.</div>
+      <div class="steps">
+        <article class="step">
+          <h3>1. Give Termux file access and install tools</h3>
+          <p>Open Termux, paste this command, and approve Android's file-access prompt.</p>
+          <pre id="cmd1">termux-setup-storage
+pkg update
+pkg upgrade
+pkg install git golang</pre>
+          <button class="small-button copy" data-copy="cmd1" type="button">Copy commands</button>
+        </article>
+        <article class="step">
+          <h3>2. Download and compile nkit2iso locally</h3>
+          <p>This builds the converter on your device. Current nkit2iso source requires Go 1.24 or newer; if the build says your Go version is too old, update Termux packages and retry.</p>
+          <pre id="cmd2">cd ~
+git clone https://github.com/DonMikone/nkit2iso.git
+cd nkit2iso
+go version
+go build -o nkit2iso .</pre>
+          <button class="small-button copy" data-copy="cmd2" type="button">Copy commands</button>
+        </article>
+        <article class="step">
+          <h3>3. Restore the game file</h3>
+          <p>This example assumes the file is in your phone's Download folder and has the filename shown below. If your filename or folder differs, edit both paths to match exactly.</p>
+          <pre id="cmd3">~/nkit2iso/nkit2iso -i "$HOME/storage/shared/Download/Super Mario Galaxy (USA) (En,Fr,Es).nkit.iso" -o "$HOME/storage/shared/Download/Super Mario Galaxy (USA) (En,Fr,Es).iso"</pre>
+          <button class="small-button copy" data-copy="cmd3" type="button">Copy command</button>
+        </article>
+        <article class="step">
+          <h3>4. Check the result</h3>
+          <p>Wait for the process to finish. A successful bit-exact restore reports a CRC32 match. If it reports an error or CRC mismatch, do not use the output; keep the original NKit file.</p>
+          <p>Some NKit files have a removed Wii update partition that cannot be reconstructed from the image alone. The tool reports this limitation rather than pretending the data is present.</p>
+          <p>Then open the <a href="./gecko/">experimental emulator</a> and choose the restored <code>.iso</code> file. The emulator itself is still experimental and may not boot the game yet.</p>
+        </article>
+      </div>
+      <p><a class="engine-link" href="https://pkg.go.dev/github.com/DonMikone/nkit2iso" target="_blank" rel="noopener noreferrer">nkit2iso documentation and limitations ↗</a></p>
+      <p><a class="engine-link" href="./">← Back to Wii Web</a></p>
+    </section>
+    <footer><span>Wii Web · Experimental</span><span>Use your own legally obtained game files.</span></footer>
+  </main>
+  <script>
+    document.querySelectorAll("[data-copy]").forEach(button => {
+      button.addEventListener("click", async () => {
+        const source = document.getElementById(button.dataset.copy);
+        try {
+          await navigator.clipboard.writeText(source.textContent);
+          button.textContent = "Copied";
+        } catch {
+          const range = document.createRange();
+          range.selectNodeContents(source);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          button.textContent = "Select text, then copy";
+        }
+      });
+    });
+  </script>
+</body>
+</html>
