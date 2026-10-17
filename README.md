@@ -8,10 +8,10 @@ This repository currently contains the responsive frontend, local game-file pick
 
 ## GitHub Pages
 
-1. Open **Settings → Pages** in this repository.
-2. Under **Build and deployment**, select **Deploy from a branch**.
-3. Select the `main` branch and `/(root)`, then save.
-4. Wait for the Pages deployment to finish and open the published URL.
+1. Open [Settings → Pages](https://github.com/Frozican/Wii-Emulator/settings/pages).
+2. Under **Build and deployment → Source**, select **GitHub Actions** and save if prompted. This matches `.github/workflows/pages.yml`.
+3. Open the [Actions tab](https://github.com/Frozican/Wii-Emulator/actions) and select **Deploy static site to GitHub Pages** (workflow file: `pages.yml`). Check the latest run.
+4. When the deployment succeeds, the site should be available at [https://frozican.github.io/Wii-Emulator/](https://frozican.github.io/Wii-Emulator/). First publication may take a few minutes.
 
 No server or backend is required for this frontend.
 
