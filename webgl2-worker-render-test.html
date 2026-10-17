@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worker WebGL2 Render Test</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10131a;color:#eef2ff}
+body{max-width:850px;margin:0 auto;padding:18px}
+h1{font-size:1.45rem;margin:.2rem 0 .6rem}
+p{line-height:1.45;color:#c6cce0}
+canvas{display:block;width:100%;height:min(56vh,420px);min-height:220px;background:#05070b;border:1px solid #46506a;border-radius:12px}
+button{font:inherit;font-weight:650;border:0;border-radius:10px;padding:12px 16px;background:#8db7ff;color:#10131a}
+#status{white-space:pre-wrap;background:#1a2030;padding:12px;border-radius:10px;margin-top:12px;overflow-wrap:anywhere}
+.small{font-size:.9rem;color:#aeb8d2}
+</style>
+</head>
+<body>
+<h1>WebGL2 Worker Render Test</h1>
+<p>This test transfers the canvas to a Web Worker and renders an animated WebGL2 scene there. It does not load or emulate a Wii game.</p>
+<canvas id="screen" aria-label="Animated WebGL2 test scene"></canvas>
+<p><button id="run">Run render test</button></p>
+<div id="status">Ready. Tap “Run render test”.</div>
+<p class="small">Success means the worker created a WebGL2 context and reported rendered frames. If it fails, send a screenshot of this page and its status.</p>
+<script>
+const canvas = document.getElementById('screen');
+const statusBox = document.getElementById('status');
+const runButton = document.getElementById('run');
+let worker = null;
+function show(message){ statusBox.textContent = message; }
+runButton.addEventListener('click', () => {
+  if (!('transferControlToOffscreen' in canvas)) {
+    show('FAIL: transferControlToOffscreen is not supported on this canvas.');
+    return;
+  }
+  runButton.disabled = true;
+  show('Starting worker…');
+  try {
+    worker = new Worker('./webgl2-worker-render-test.js');
+    worker.onmessage = (event) => {
+      const d = event.data || {};
+      if (d.type === 'status') show(d.message);
+      if (d.type === 'result') {
+        show((d.ok ? 'PASS' : 'FAIL') + '\n' + d.message);
+        runButton.disabled = false;
+      }
+      if (d.type === 'error') {
+        show('WORKER ERROR\n' + d.message);
+        runButton.disabled = false;
+      }
+    };
+    worker.onerror = (event) => {
+      show('WORKER ERROR\n' + (event.message || 'Unknown worker error'));
+      runButton.disabled = false;
+    };
+    const offscreen = canvas.transferControlToOffscreen();
+    worker.postMessage({type:'start', canvas:offscreen, width:Math.max(1,Math.floor(canvas.clientWidth)), height:Math.max(1,Math.floor(canvas.clientHeight))}, [offscreen]);
+  } catch (error) {
+    show('FAIL\n' + (error && error.stack ? error.stack : String(error)));
+    runButton.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
