@@ -162,8 +162,22 @@ replace_once(
 )
 replace_once(
     web_html,
-    'let romData = null;',
-    'let romData = null;'
+    '            await init();\n\n            let romData = null;',
+    '            const wasmReady = init();\n\n            let romData = null;'
+)
+replace_once(
+    web_html,
+    """            startBtn.addEventListener('click', () => {
+                if (!romData) return;
+                document.getElementById('setup').style.display = 'none';
+                start_emulator(romData, romName, dspData ?? undefined);
+            });""",
+    """            startBtn.addEventListener('click', async () => {
+                if (!romData) return;
+                await wasmReady;
+                document.getElementById('setup').style.display = 'none';
+                start_emulator(romData, romName, dspData ?? undefined);
+            });"""
 )
 
 print("Patched Gecko web frontend for Wii ISO/RVZ boot.")
