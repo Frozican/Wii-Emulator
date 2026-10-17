@@ -16,3 +16,25 @@ if (backButton) {
     document.querySelector("#home")?.scrollIntoView({ behavior: "smooth" });
   });
 }
+
+
+// Local NKit file checker. This intentionally does not claim to restore an image:
+// a correct restore needs the NKit reconstruction algorithm and streaming output.
+const restoreFile = document.querySelector("#restoreFile");
+const restoreInfo = document.querySelector("#restoreInfo");
+if (restoreFile && restoreInfo) {
+  restoreFile.addEventListener("change", () => {
+    const file = restoreFile.files?.[0];
+    restoreInfo.classList.remove("hidden");
+    if (!file) {
+      restoreInfo.textContent = "";
+      return;
+    }
+    const name = file.name.toLowerCase();
+    const valid = name.endsWith(".nkit.iso") || name.endsWith(".nkit.gcz");
+    const size = (file.size / (1024 ** 3)).toFixed(2);
+    restoreInfo.textContent = valid
+      ? `Selected locally: ${file.name} · ${size} GiB. No upload occurred. This page cannot convert it yet; use one of the restoration tools below.`
+      : "This does not look like a legacy NKit image (.nkit.iso or .nkit.gcz). No data was uploaded or changed.";
+  });
+}
