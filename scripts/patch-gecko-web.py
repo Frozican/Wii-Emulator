@@ -175,8 +175,8 @@ replace_once(
 )
 replace_once(
     web_html,
-    "                    document.getElementById('setup').style.display = 'none';",
-    "                    setBootStatus('Starting Wii boot path… if this message remains, inspect the error below or browser console.');\n                    document.getElementById('setup').style.display = 'none';"
+    "document.getElementById('setup').style.display = 'none';",
+    "setBootStatus('Starting Wii boot path… if this message remains, inspect the error below or browser console.');\n                document.getElementById('setup').style.display = 'none';"
 )
 
 replace_once(
