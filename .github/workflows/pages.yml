@@ -1,4 +1,4 @@
-name: Build Gecko WASM and deploy Wii Web
+name: Build Gecko WASM and deploy Wii Web with updated disc diagnostics
 
 on:
   push:
