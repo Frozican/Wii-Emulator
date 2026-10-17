@@ -174,14 +174,30 @@ replace_once(
                     reader.readAsArrayBuffer(file);
                 });
             }''',
-    '''            function readFile(file) {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(new Uint8Array(reader.result));
-                    reader.onerror = () => reject(reader.error ?? new Error('Could not read selected file'));
-                    reader.onabort = () => reject(new Error('File reading was cancelled'));
-                    reader.readAsArrayBuffer(file);
-                });
+    '''            async function readFile(file, onProgress) {
+                // Read in small slices: Android document providers can fail on a
+                // single multi-gigabyte read even when the selected file is valid.
+                // Gecko still needs the complete image in memory after this step.
+                const chunkSize = 16 * 1024 * 1024;
+                const result = new Uint8Array(file.size);
+                for (let offset = 0; offset < file.size; offset += chunkSize) {
+                    const end = Math.min(offset + chunkSize, file.size);
+                    let buffer;
+                    try {
+                        buffer = await file.slice(offset, end).arrayBuffer();
+                    } catch (error) {
+                        throw new Error('Chunk read failed at ' +
+                            (offset / 1024 / 1024).toFixed(0) + ' MB: ' +
+                            (error?.message ?? 'unknown error'));
+                    }
+                    if (buffer.byteLength !== end - offset) {
+                        throw new Error('Incomplete chunk at ' +
+                            (offset / 1024 / 1024).toFixed(0) + ' MB');
+                    }
+                    result.set(new Uint8Array(buffer), offset);
+                    onProgress?.(end, file.size);
+                }
+                return result;
             }'''
 )
 replace_once(
@@ -206,8 +222,12 @@ replace_once(
                 romNameEl.textContent = file.name + ' (reading...)';
                 startBtn.disabled = true;
                 try {
-                    romData = await readFile(file);
-                    romNameEl.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(0) + ' MB)';
+                    romData = await readFile(file, (loaded, total) => {
+                        romNameEl.textContent = file.name + ' (' +
+                            (loaded / 1024 / 1024).toFixed(0) + ' / ' +
+                            (total / 1024 / 1024).toFixed(0) + ' MB)';
+                    });
+                    romNameEl.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(0) + ' MB, ready)';
                     startBtn.disabled = false;
                 } catch (error) {
                     romNameEl.textContent = 'Read failed: ' + (error?.message ?? 'unknown error');
