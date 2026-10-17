@@ -22,7 +22,7 @@ self.onmessage = async ({data}) => {
   for(let i=1;i<count;i++){
    const w=u32(fst,i*12);if((w>>>24)===1)continue;
    const no=w&0xffffff,ns=stringsAt+no;let ne=ns;while(ne<fst.length&&fst[ne])ne++;
-   entries.push({name:dec.decode(fst.slice(ns,ne)),offset:u32(fst,i*12+4)*4,size:u32(fst,i*12+8)*4});
+   entries.push({name:dec.decode(fst.slice(ns,ne)),offset:u32(fst,i*12+4)*4,size:u32(fst,i*12+8)});
   }
   entries.sort((a,b)=>a.offset-b.offset);
   const firstFile=entries[0],fstEndLogical=fstOff+fstSize;
@@ -36,6 +36,7 @@ self.onmessage = async ({data}) => {
   const fstEndWindow=await hexAt(fstEnd,0x80);
   const firstFileWindow=await hexAt(firstFilePhysicalGuess,0x40);
   const rawGapCandidate=await hexAt(dataStart+fstEndLogical,0x80);
+  const fileSamples=await Promise.all(entries.slice(0,16).map(async e=>({name:e.name,offset:e.offset,size:e.size,start:await hexAt(dataStart+e.offset,16),end:await hexAt(dataStart+e.offset+Math.max(0,e.size-16),16)})));
   const lines=[
    "PASS — NKit filesystem-gap probe (gap location corrected)",
    `Disc RMGE01; image size ${file.size.toLocaleString("en-US")} bytes`,
@@ -51,9 +52,12 @@ self.onmessage = async ({data}) => {
    `Bytes at physical FST end (first 128): ${fstEndWindow}`,
    `Bytes at dataStart + first logical file offset (${hx(firstFilePhysicalGuess)}): ${firstFileWindow}`,
    `Bytes at dataStart + logical FST end (${hx(dataStart+fstEndLogical)}): ${rawGapCandidate}`,
+   "",
+   "Cross-check first 16 files (offsets are Wii word offsets ×4; file sizes are byte counts, NOT ×4):",
+   ...fileSamples.map(e=>`${e.name}: start@${hx(dataStart+e.offset)} [${e.start}]; end@${hx(dataStart+e.offset+Math.max(0,e.size-16))} [${e.end}]`),
    `Last 32 file bytes @ ${hx(tailStart)}: ${tailHex}`,
    "",
-   "First files sorted by FST offset (both Wii offsets and sizes multiplied by 4):",
+   "First files sorted by FST offset (Wii file offsets multiplied by 4; file sizes kept in bytes):",
    ...entries.slice(0,16).map(e=>`${e.name}: offset=${hx(e.offset)} size=${hx(e.size)}`),
    "",
    "This test reads only small File.slice ranges. It does not decode all gap types, reconstruct the partition, or boot the game."
