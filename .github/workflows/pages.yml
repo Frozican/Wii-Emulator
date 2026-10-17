@@ -63,12 +63,32 @@ jobs:
         working-directory: gecko-src
         run: wasm-pack build crates/web --target web --out-dir pkg --out-name gecko_web --release
 
+      - name: Checkout streaming-reader test branch
+        uses: actions/checkout@v4
+        with:
+          repository: Frozican/gecko
+          ref: feat/browser-disc-streaming
+          path: reader-src
+
+      - name: Initialize test-reader submodules
+        working-directory: reader-src
+        run: |
+          git submodule update --init --depth 1 --recursive submodules/chipi-spec
+          git submodule update --init --depth 1 --recursive submodules/solstice
+          git submodule update --init --depth 1 submodules/dolphin
+
+      - name: Build streaming-reader WASM
+        working-directory: reader-src
+        run: wasm-pack build crates/web --target web --out-dir pkg --out-name gecko_web --release
+
       - name: Assemble static website
         run: |
-          mkdir -p gecko
+          mkdir -p gecko reader-test
           cp gecko-src/crates/web/index.html gecko/index.html
           cp -r gecko-src/crates/web/pkg gecko/pkg
-          rm -rf gecko-src
+          cp reader-src/crates/web/browser-disc-reader-test.html reader-test/index.html
+          cp -r reader-src/crates/web/pkg reader-test/pkg
+          rm -rf gecko-src reader-src
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
