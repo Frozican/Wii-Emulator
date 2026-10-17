@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NKit bounded range-cache prototype</title>
+<style>body{font:16px system-ui,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;line-height:1.5}input,button{font:inherit;padding:10px;margin:6px 0;max-width:100%;box-sizing:border-box}label{display:block;margin-top:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f2f2f2;color:#111;padding:14px;border-radius:8px}</style></head>
+<body><h1>NKit bounded range-cache prototype</h1>
+<p>This is a browser I/O prototype, not the emulator. It reads a few known FST files through a fixed-size LRU cache over File.slice(), checks cache hits, cross-chunk reads, and the memory bound. The complete ISO and complete files are never copied.</p>
+<label for="iso">Super Mario Galaxy NKit ISO</label><input id="iso" type="file" accept=".iso,.nkit.iso,application/octet-stream">
+<br><button id="run">Run bounded-cache test</button><pre id="out">Choose the ISO, then run the test.</pre>
+<p><small>Prototype parameters: 256 KiB chunks, 4 MiB maximum cached payload. A passing result validates this JS cache only; it does not connect the cache to Gecko's synchronous Dvd trait.</small></p>
+<script>
+const $=id=>document.getElementById(id),out=$("out");
+$("run").onclick=()=>{const file=$("iso").files?.[0];if(!file){out.textContent="Select the ISO first.";return;}
+out.textContent="Reading metadata and exercising bounded cache…";
+const worker=new Worker("./nkit-bounded-cache-worker.js?v=1");
+worker.onmessage=e=>{out.textContent=e.data;worker.terminate();};
+worker.onerror=e=>{out.textContent="Worker error: "+e.message;worker.terminate();};
+worker.postMessage({file});};
+</script></body></html>
