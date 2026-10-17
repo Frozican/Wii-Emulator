@@ -27,7 +27,8 @@ jobs:
       - name: Checkout Gecko emulator source
         uses: actions/checkout@v4
         with:
-          repository: ioncodes/gecko
+          repository: Frozican/gecko
+          ref: feat/browser-disc-streaming
           path: gecko-src
 
       - name: Initialize Gecko submodules
