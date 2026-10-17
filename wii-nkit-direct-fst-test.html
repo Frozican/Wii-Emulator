@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wii NKit Direct FST Test</title>
+<style>
+body{font:16px system-ui,sans-serif;max-width:850px;margin:24px auto;padding:0 16px;line-height:1.5}button,input{font:inherit;padding:10px;margin:6px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f2f2f2;color:#111;padding:14px;border-radius:8px}p{max-width:70ch}
+</style>
+</head>
+<body>
+<h1>Wii NKit direct FST test</h1>
+<p>This diagnostic reads a few small ranges from your local Wii NKit ISO. It does not upload or copy the complete image.</p>
+<label for="iso">Select the Super Mario Galaxy NKit ISO:</label><br>
+<input id="iso" type="file" accept=".iso,.nkit.iso,application/octet-stream"><br>
+<button id="run">Run direct FST test</button>
+<pre id="out">Choose the file, then run the test.</pre>
+<script>
+const input=document.getElementById("iso"), output=document.getElementById("out"), button=document.getElementById("run");
+button.addEventListener("click",()=>{
+ const file=input.files?.[0];
+ if(!file){output.textContent="Select the ISO first.";return;}
+ output.textContent="Reading small ranges…";
+ const worker=new Worker("./wii-nkit-direct-fst-worker.js");
+ worker.onmessage=e=>{output.textContent=e.data;worker.terminate();};
+ worker.onerror=e=>{output.textContent="Worker error: "+e.message;worker.terminate();};
+ worker.postMessage({file});
+});
+</script>
+</body>
+</html>
