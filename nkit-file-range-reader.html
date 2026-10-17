@@ -15,7 +15,7 @@ $("run").onclick=()=>{const file=$("iso").files?.[0];if(!file){out.textContent="
 const offset=Number($("offset").value),length=Number($("length").value),name=$("name").value.trim();
 if(!Number.isSafeInteger(offset)||offset<0||!Number.isInteger(length)||length<1||length>4096){out.textContent="Offset must be a non-negative safe integer; length must be 1–4096 bytes.";return;}
 out.textContent="Reading disc metadata and requested range…";
-const worker=new Worker("./nkit-file-range-reader-worker.js?v=1");
+const worker=new Worker("./nkit-file-range-reader-worker.js?v=2");
 worker.onmessage=e=>{out.textContent=e.data;worker.terminate();};
 worker.onerror=e=>{out.textContent="Worker error: "+e.message;worker.terminate();};
 worker.postMessage({file,name,offset,length});};
