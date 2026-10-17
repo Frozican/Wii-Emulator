@@ -161,17 +161,17 @@ replace_once(
 replace_once(
     web_html,
     '        <button id="start" disabled>Start</button>',
-    '        <button id="start" disabled>Start</button>\\n        <div id="boot-status" role="status" aria-live="polite" style="max-width: min(90vw, 720px); white-space: pre-wrap; overflow-wrap: anywhere; color: #ddd; font: 13px/1.5 system-ui, sans-serif;"></div>'
+    '        <button id="start" disabled>Start</button>\n        <div id="boot-status" role="status" aria-live="polite" style="max-width: min(90vw, 720px); white-space: pre-wrap; overflow-wrap: anywhere; color: #ddd; font: 13px/1.5 system-ui, sans-serif;"></div>'
 )
 replace_once(
     web_html,
     '            const startBtn = document.getElementById(\'start\');',
-    '            const startBtn = document.getElementById(\'start\');\\n            const bootStatus = document.getElementById(\'boot-status\');\\n            const setBootStatus = (message) => { bootStatus.textContent = message; };\\n            window.addEventListener(\'error\', (event) => {\\n                const detail = event.message || event.error?.message || \'Unknown browser/WASM error\';\\n                setBootStatus(\'BOOT ERROR: \' + detail);\\n                console.error(\'[Wii boot error]\', event.error || event.message);\\n            });\\n            window.addEventListener(\'unhandledrejection\', (event) => {\\n                const detail = event.reason?.message || String(event.reason || \'Unknown async error\');\\n                setBootStatus(\'ASYNC BOOT ERROR: \' + detail);\\n                console.error(\'[Wii async boot error]\', event.reason);\\n            });'
+    '            const startBtn = document.getElementById(\'start\');\n            const bootStatus = document.getElementById(\'boot-status\');\n            const setBootStatus = (message) => { bootStatus.textContent = message; };\n            window.addEventListener(\'error\', (event) => {\n                const detail = event.message || event.error?.message || \'Unknown browser/WASM error\';\n                setBootStatus(\'BOOT ERROR: \' + detail);\n                console.error(\'[Wii boot error]\', event.error || event.message);\n            });\n            window.addEventListener(\'unhandledrejection\', (event) => {\n                const detail = event.reason?.message || String(event.reason || \'Unknown async error\');\n                setBootStatus(\'ASYNC BOOT ERROR: \' + detail);\n                console.error(\'[Wii async boot error]\', event.reason);\n            });'
 )
 replace_once(
     web_html,
     '                    document.getElementById("setup").style.display = "none";',
-    '                    setBootStatus(\'Starting Wii boot path… if this message remains, inspect the error below or browser console.\');\\n                    document.getElementById("setup").style.display = "none";'
+    '                    setBootStatus(\'Starting Wii boot path… if this message remains, inspect the error below or browser console.\');\n                    document.getElementById("setup").style.display = "none";'
 )
 
 replace_once(
