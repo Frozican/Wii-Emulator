@@ -1,3 +1,4 @@
+# The website repository owns GitHub Pages deployment; Gecko's fork does not have Pages enabled.
 name: Build Gecko WASM and deploy Wii Web with updated disc diagnostics
 
 on:
