@@ -527,8 +527,9 @@ new_status = """            const bootStatus = document.getElementById('boot-sta
             let errorSequence = 0;
             const showError = (code, error) => {
                 const detail = error?.message || String(error || 'Unknown error');
+                const lastStage = bootStatus.textContent || 'No boot stage recorded';
                 const errorId = code + '-' + (++errorSequence).toString().padStart(3, '0');
-                bootStatus.textContent = 'ERROR ' + errorId + ': ' + detail + '\\nCopy this code and full message when reporting.';
+                bootStatus.textContent = 'ERROR ' + errorId + ': ' + detail + '\\\\nLast boot stage: ' + lastStage + '\\nCopy this code and full message when reporting.';
                 bootStatus.style.background = '#5b1515ee';
                 console.error('[Wii ' + errorId + ']', error);
             };
