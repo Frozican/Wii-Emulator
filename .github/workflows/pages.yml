@@ -81,45 +81,8 @@ jobs:
       - name: Ensure js-sys dependency for streaming-reader build
         working-directory: reader-src
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          cargo = Path("crates/web/Cargo.toml")
-          content = cargo.read_text()
-          if "js-sys =" not in content:
-              content, count = re.subn(
-                  r'(?m)^(wasm-bindgen-futures\s*=\s*"[^"]+"\s*)
-
-      - name: Assemble static website
-        run: |
-          mkdir -p gecko reader-test
-          cp gecko-src/crates/web/index.html gecko/index.html
-          cp -r gecko-src/crates/web/pkg gecko/pkg
-          cp reader-src/crates/web/browser-disc-reader-test.html reader-test/index.html
-          cp -r reader-src/crates/web/pkg reader-test/pkg
-          rm -rf gecko-src reader-src
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload static files
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: "."
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-,
-                  r'\1\njs-sys = "0.3.94"',
-                  content,
-                  count=1,
-              )
-              if count != 1:
-                  raise SystemExit("Could not add js-sys: wasm-bindgen-futures dependency line not found")
-              cargo.write_text(content)
-          PY
+          grep -q '^js-sys[[:space:]]*=' crates/web/Cargo.toml || sed -i '/^wasm-bindgen-futures[[:space:]]*=/a js-sys = "0.3.94"' crates/web/Cargo.toml
+          grep -q '^js-sys[[:space:]]*=' crates/web/Cargo.toml
 
       - name: Build streaming-reader WASM
         working-directory: reader-src
