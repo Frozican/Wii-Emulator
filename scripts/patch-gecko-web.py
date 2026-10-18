@@ -492,7 +492,7 @@ replace_once(
 
 replace_once(
     web_html,
-    '                    start_emulator(selectedRom, romName, dspData ?? undefined);',
+    '                    start_emulator(selectedRom, romName, dspData ?? undefined, selectedFile ?? undefined);',
     '                    start_emulator(selectedRom, romName, dspData ?? undefined, selectedFile ?? undefined);'
 )
 
