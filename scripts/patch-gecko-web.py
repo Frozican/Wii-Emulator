@@ -343,7 +343,7 @@ replace_once(
                     document.getElementById('setup').style.display = 'none';
                     const selectedRom = romData;
                     console.info('[Wii boot attempt] Starting Gecko with', romName, '(' + selectedRom.byteLength + ' bytes). A successful handoff does not guarantee that the game reaches gameplay.');
-                    start_emulator(selectedRom, romName, dspData ?? undefined);
+                    start_emulator(selectedRom, romName, dspData ?? undefined, selectedFile ?? undefined);
                     // wasm-bindgen has copied the bytes into Rust-owned memory;
                     // release the JavaScript reference so it can be reclaimed.
                     romData = null;
@@ -492,7 +492,7 @@ replace_once(
 
 replace_once(
     web_html,
-    '                    start_emulator(selectedRom, romName, dspData ?? undefined, selectedFile ?? undefined);',
+    '                    start_emulator(selectedRom, romName, dspData ?? undefined);',
     '                    start_emulator(selectedRom, romName, dspData ?? undefined, selectedFile ?? undefined);'
 )
 
