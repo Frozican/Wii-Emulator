@@ -20,6 +20,13 @@ replace_once(
     'image = { path = "../image", default-features = false, features = ["rvz"] }',
 )
 
+# disc_stream.rs uses js_sys::Uint8Array for bounded File.slice() reads.
+replace_once(
+    cargo,
+    'wasm-bindgen-futures = "0.4.67"\\n',
+    'wasm-bindgen-futures = "0.4.67"\\njs-sys = "0.3.94"\\n',
+)
+
 replace_once(
     web_rs,
     'use gecko::gamecube::GameCube;\n',
