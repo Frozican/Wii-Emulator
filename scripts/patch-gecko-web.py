@@ -267,10 +267,16 @@ replace_once(
                 // images are unsafe on phones even though File.slice() is available.
                 const deviceMemoryGb = navigator.deviceMemory || 4;
                 const estimatedPeakGb = (file.size * 2) / (1024 * 1024 * 1024);
-                if (estimatedPeakGb > deviceMemoryGb * 0.6) {
-                    romNameEl.textContent = 'Image not loaded to protect browser memory: estimated peak ' +
-                        estimatedPeakGb.toFixed(1) + ' GB, device memory estimate ' +
-                        deviceMemoryGb + ' GB. Full-disc streaming is not integrated yet; use a smaller RVZ or wait for streaming support.';
+                const mobileMemoryLimitBytes = 512 * 1024 * 1024;
+                const isMobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+                if ((isMobile && file.size > mobileMemoryLimitBytes) ||
+                    estimatedPeakGb > deviceMemoryGb * 0.6) {
+                    const limitNote = isMobile && file.size > mobileMemoryLimitBytes
+                        ? 'Mobile full-image loading limit: 512 MiB.'
+                        : 'Estimated peak ' + estimatedPeakGb.toFixed(1) +
+                          ' GB exceeds the safe browser-memory estimate for this device.';
+                    romNameEl.textContent = 'Image not loaded to protect browser memory. ' +
+                        limitNote + ' RVZ block-by-block streaming is not integrated yet, so this large disc cannot safely boot in this browser build.';
                     return;
                 }
 
