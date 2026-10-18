@@ -496,6 +496,75 @@ replace_once(
     '                    start_emulator(selectedRom, romName, dspData ?? undefined, selectedFile ?? undefined);'
 )
 
+# Add an actual percentage bar for file loading and structured error IDs.
+html = web_html.read_text()
+status_marker = '<div id="boot-status" role="status" aria-live="polite" style="position: fixed; top: 8px; left: 8px; right: 8px; z-index: 10; max-height: 30vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: #fff; background: #111d; padding: 8px; border-radius: 6px; font: 13px/1.5 system-ui, sans-serif;"></div>'
+progress_markup = status_marker + '''
+    <div id="load-progress-wrap" style="position:fixed;top:58px;left:8px;right:8px;z-index:11;background:#222;border:1px solid #555;border-radius:6px;padding:5px;display:none;">
+      <div id="load-progress-label" style="font:12px system-ui;color:#fff;margin-bottom:4px;">Reading disc: 0%</div>
+      <progress id="load-progress" max="100" value="0" style="width:100%;height:14px;"></progress>
+    </div>'''
+if status_marker not in html:
+    raise SystemExit("Could not insert load progress UI")
+html = html.replace(status_marker, progress_markup, 1)
+
+old_status = """            const bootStatus = document.getElementById('boot-status');
+            const setBootStatus = (message) => { bootStatus.textContent = message; };
+            window.addEventListener('error', (event) => {
+                const detail = event.message || event.error?.message || 'Unknown browser/WASM error';
+                setBootStatus('BOOT ERROR: ' + detail);
+                console.error('[Wii boot error]', event.error || event.message);
+            });
+            window.addEventListener('unhandledrejection', (event) => {
+                const detail = event.reason?.message || String(event.reason || 'Unknown async error');
+                setBootStatus('ASYNC BOOT ERROR: ' + detail);
+                console.error('[Wii async boot error]', event.reason);
+            });"""
+new_status = """            const bootStatus = document.getElementById('boot-status');
+            const progressWrap = document.getElementById('load-progress-wrap');
+            const progressBar = document.getElementById('load-progress');
+            const progressLabel = document.getElementById('load-progress-label');
+            let errorSequence = 0;
+            const showError = (code, error) => {
+                const detail = error?.message || String(error || 'Unknown error');
+                const errorId = code + '-' + (++errorSequence).toString().padStart(3, '0');
+                bootStatus.textContent = 'ERROR ' + errorId + ': ' + detail + '\\\\nCopy this code and full message when reporting.';
+                bootStatus.style.background = '#5b1515ee';
+                console.error('[Wii ' + errorId + ']', error);
+            };
+            const setBootStatus = (message) => { bootStatus.textContent = message; };
+            window.addEventListener('error', (event) => showError('WEB-001', event.error || event.message || 'Unknown browser/WASM error'));
+            window.addEventListener('unhandledrejection', (event) => showError('ASYNC-001', event.reason || 'Unknown async error'));"""
+if (!html.includes(old_status)) throw new Error("status handler block not found");
+html = html.replace(old_status, new_status);
+
+const oldProgress = """                        romNameEl.textContent = file.name + ' (' +
+                            (loaded / 1024 / 1024).toFixed(0) + ' / ' +
+                            (total / 1024 / 1024).toFixed(0) + ' MB)';"""
+const newProgress = """                        const percent = Math.min(100, Math.floor((loaded / total) * 100));
+                        progressWrap.style.display = 'block';
+                        progressBar.value = percent;
+                        progressLabel.textContent = 'Reading disc: ' + percent + '% (' +
+                            (loaded / 1024 / 1024).toFixed(0) + ' / ' +
+                            (total / 1024 / 1024).toFixed(0) + ' MB)';
+                        romNameEl.textContent = file.name + ' (' + percent + '%)';"""
+if (!html.includes(oldProgress)) throw new Error("progress callback not found");
+html = html.replace(oldProgress, newProgress);
+
+html = html.replace(
+    "romNameEl.textContent = 'Read failed: ' + (error?.message ?? 'unknown error');\n                    console.error('Failed to read selected disc image', error);",
+    "progressLabel.textContent = 'Disc read failed';\n                    showError('FILE-001', error);\n                    romNameEl.textContent = 'Read failed: ' + (error?.message ?? 'unknown error');"
+);
+html = html.replace(
+    "setBootStatus('Starting Wii boot path…');\n                    document.getElementById('setup').style.display = 'none';",
+    "setBootStatus('BOOT-START-001: Wii boot path started. Waiting for first rendered frame…');\n                    progressWrap.style.display = 'block';\n                    progressBar.removeAttribute('value');\n                    progressLabel.textContent = 'Booting Wii… exact percentage is not exposed by the core';\n                    document.getElementById('setup').style.display = 'none';"
+);
+html = html.replace(
+    "romNameEl.textContent = 'Could not start emulator: ' + (error?.message ?? 'unknown error');\n                    console.error('Failed to start emulator', error);",
+    "showError('BOOT-002', error);\n                    romNameEl.textContent = 'Could not start emulator: ' + (error?.message ?? 'unknown error');"
+);
+web_html.write_text(html)
+
 # Fail the deployment before compiling if the Wii boot and asynchronous ISO-read
 # handoff was not actually wired into both Rust and the browser UI.
 patched_rs = web_rs.read_text()
