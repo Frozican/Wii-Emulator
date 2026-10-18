@@ -489,4 +489,24 @@ replace_once(
     '                    start_emulator(selectedRom, romName, dspData ?? undefined, selectedFile ?? undefined);'
 )
 
-print("Patched Gecko web frontend for Wii ISO/RVZ boot.")
+# Fail the deployment before compiling if the Wii boot and asynchronous ISO-read
+# handoff was not actually wired into both Rust and the browser UI.
+patched_rs = web_rs.read_text()
+patched_html = web_html.read_text()
+required_rust = [
+    "Wii::apploader_hle(dvd).build()",
+    "wii.enable_async_dvd_reads(true)",
+    "self.emulator.pending_async_dvd_read()",
+    "pub fn start_emulator(rom_data: Vec<u8>, filename: String, dsp_irom: Option<Vec<u8>>, disc_file: Option<web_sys::File>)",
+]
+required_html = [
+    "Starting Wii boot path",
+    "selectedFile ?? undefined",
+    "BOOT BLOCKED: NKit ISO detected",
+]
+missing = [item for item in required_rust if item not in patched_rs]
+missing += [item for item in required_html if item not in patched_html]
+if missing:
+    raise SystemExit("Wii web patch validation failed; missing: " + ", ".join(missing))
+
+print("Patched and validated Gecko Wii HLE boot plus asynchronous ISO runtime reads.")
