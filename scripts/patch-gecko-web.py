@@ -492,8 +492,8 @@ replace_once(
 
 replace_once(
     web_html,
-    '                    start_emulator(selectedRom, romName, dspData ?? undefined);',
-    '                    start_emulator(selectedRom, romName, dspData ?? undefined, selectedFile ?? undefined);'
+    '                    setBootStatus(\'BOOT-STAGE-JS-1: Calling WebAssembly with \' + selectedRom.byteLength + \' ROM bytes; file=\' + (selectedFile?.size ?? \'in-memory\') + \'.\');\n                    start_emulator(selectedRom, romName, dspData ?? undefined);',
+    '                    setBootStatus(\'BOOT-STAGE-JS-2: WebAssembly call returned; ROM bytes=\' + selectedRom.byteLength + \'.\');\n                    start_emulator(selectedRom, romName, dspData ?? undefined, selectedFile ?? undefined);'
 )
 
 # Add an actual percentage bar for file loading and structured error IDs.
