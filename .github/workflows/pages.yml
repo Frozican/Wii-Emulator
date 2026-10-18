@@ -85,6 +85,7 @@ jobs:
         run: |
           git submodule update --init --depth 1 --recursive submodules/chipi-spec
           git submodule update --init --depth 1 --recursive submodules/solstice
+          git submodule update --init --depth 1 submodules/dolphin
 
       - name: Ensure js-sys dependency for streaming-reader build
         working-directory: reader-src
