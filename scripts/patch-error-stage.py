@@ -4,14 +4,22 @@ from pathlib import Path
 
 path = Path("gecko-src/crates/web/src/lib.rs")
 source = path.read_text()
-old = """                const detail = error?.message || String(error || 'Unknown error');
-                const errorId = code + '-' + (++errorSequence).toString().padStart(3, '0');
-                bootStatus.textContent = 'ERROR ' + errorId + ': ' + detail + '\\nCopy this code and full message when reporting.';"""
-new = """                const detail = error?.message || String(error || 'Unknown error');
-                const lastStage = bootStatus.textContent || 'No boot stage recorded';
-                const errorId = code + '-' + (++errorSequence).toString().padStart(3, '0');
-                bootStatus.textContent = 'ERROR ' + errorId + ': ' + detail + '\\nLast boot stage: ' + lastStage + '\\nCopy this code and full message when reporting.';"""
-if source.count(old) != 1:
-    raise SystemExit(f"Expected one showError target; found {source.count(old)}")
-path.write_text(source.replace(old, new, 1))
+needle = "const errorId = code + '-' + (++errorSequence).toString().padStart(3, '0');"
+if source.count(needle) != 1:
+    raise SystemExit(f"Expected one error ID line; found {source.count(needle)}")
+source = source.replace(
+    needle,
+    "const lastStage = bootStatus.textContent || 'No boot stage recorded';\n                " + needle,
+    1,
+)
+needle2 = "bootStatus.textContent = 'ERROR ' + errorId + ': ' + detail + "
+idx = source.find(needle2)
+if idx < 0:
+    raise SystemExit("Could not find visible error message assignment")
+line_end = source.find("\n", idx)
+line = source[idx:line_end]
+if "Last boot stage:" not in line:
+    replacement = line.replace(" + detail + ", " + detail + '\\\\nLast boot stage: ' + lastStage + ")
+    source = source[:idx] + replacement + source[line_end:]
+path.write_text(source)
 print("Preserved last boot stage in boot errors.")
