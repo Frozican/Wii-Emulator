@@ -41,6 +41,9 @@ jobs:
       - name: Patch Gecko web frontend for Wii ISO/RVZ boot
         run: python3 scripts/patch-gecko-web.py
 
+      - name: Install in-page Rust panic diagnostics
+        run: python3 scripts/patch-panic-diagnostics.py
+
       - name: Install Rust WebAssembly target
         uses: dtolnay/rust-toolchain@1.96.0
         with:
