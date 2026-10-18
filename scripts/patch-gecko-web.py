@@ -581,7 +581,7 @@ required_rust = [
     "pub fn start_emulator(rom_data: Vec<u8>, filename: String, dsp_irom: Option<Vec<u8>>, disc_file: Option<web_sys::File>)",
 ]
 required_html = [
-    "Starting Wii boot path",
+    "Wii boot path started",
     "selectedFile ?? undefined",
     "BOOT BLOCKED: NKit ISO detected",
 ]
