@@ -274,15 +274,15 @@ replace_once(
                 // images are unsafe on phones even though File.slice() is available.
                 const deviceMemoryGb = navigator.deviceMemory || 4;
                 const estimatedPeakGb = (file.size * 2) / (1024 * 1024 * 1024);
-                const mobileMemoryLimitBytes = 1536 * 1024 * 1024;
+                const mobileMemoryLimitBytes = 1024 * 1024 * 1024;
                 const isMobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
-                // Temporary user-requested test allowance: up to 1.5 GiB on mobile.
+                // Conservative mobile limit: WebAssembly still receives the entire image in one call.
                 // This does NOT make full-image loading memory-safe; Android may kill
                 // the tab because the current core still needs multiple image-sized buffers.
                 if ((isMobile && file.size > mobileMemoryLimitBytes) ||
                     (!isMobile && estimatedPeakGb > deviceMemoryGb * 0.6)) {
                     const limitNote = isMobile && file.size > mobileMemoryLimitBytes
-                        ? 'Mobile test limit: 1.5 GiB. This image exceeds it.'
+                        ? 'Mobile safety limit: 1 GiB. Full-disc streaming is not integrated, so this image cannot boot safely in this build.'
                         : 'Estimated peak ' + estimatedPeakGb.toFixed(1) +
                           ' GB exceeds the safe browser-memory estimate for this device.';
                     romNameEl.textContent = 'Image not loaded to protect browser memory. ' +
