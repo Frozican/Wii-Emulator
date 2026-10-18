@@ -14,19 +14,26 @@ def replace_once(path: Path, old: str, new: str) -> None:
         raise SystemExit(f"Expected one patch target in {path}: {old[:80]!r}; found {count}")
     path.write_text(text.replace(old, new, 1))
 
-replace_once(
-    cargo,
-    'image = { path = "../image", default-features = false }',
-    'image = { path = "../image", default-features = false, features = ["rvz"] }',
-)
-
-# disc_stream.rs uses js_sys::Uint8Array for bounded File.slice() reads.
-replace_once(
-    cargo,
-    'wasm-bindgen-futures = "0.4.67"\n',
-    'wasm-bindgen-futures = "0.4.67"\njs-sys = "0.3.94"\n',
-)
-
+# Ensure the streaming-reader dependencies are enabled whether the Gecko
+# branch already includes them or the website is building an older checkout.
+cargo_text = cargo.read_text()
+image_line = 'image = { path = "../image", default-features = false'
+image_lines = [line for line in cargo_text.splitlines() if line.startswith(image_line)]
+if len(image_lines) != 1:
+    raise SystemExit("Expected exactly one image dependency in crates/web/Cargo.toml")
+if 'features = ["rvz"]' not in image_lines[0]:
+    cargo_text = cargo_text.replace(
+        image_lines[0],
+        'image = { path = "../image", default-features = false, features = ["rvz"] }',
+        1,
+    )
+if not any(line.startswith("js-sys = ") for line in cargo_text.splitlines()):
+    cargo_text = cargo_text.replace(
+        'wasm-bindgen-futures = "0.4.67"\n',
+        'wasm-bindgen-futures = "0.4.67"\njs-sys = "0.3.94"\n',
+        1,
+    )
+cargo.write_text(cargo_text)
 replace_once(
     web_rs,
     'use gecko::gamecube::GameCube;\n',
