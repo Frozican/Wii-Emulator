@@ -85,7 +85,6 @@ jobs:
         run: |
           git submodule update --init --depth 1 --recursive submodules/chipi-spec
           git submodule update --init --depth 1 --recursive submodules/solstice
-          git submodule update --init --depth 1 submodules/dolphin
 
       - name: Ensure js-sys dependency for streaming-reader build
         working-directory: reader-src
@@ -113,7 +112,10 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: "."
+          name: github-pages-${{ github.run_id }}
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_id }}
