@@ -57,6 +57,12 @@ jobs:
       - name: Stream RVZ discs block by block
         run: python3 scripts/patch-rvz-stream.py
 
+      - name: Fix GX vertex batching panic
+        run: python3 scripts/patch-gx-vertices.py
+
+      - name: Optimized release profile for the web crate
+        run: python3 scripts/patch-wasm-profile.py
+
       - name: Install Rust WebAssembly target
         uses: dtolnay/rust-toolchain@1.96.0
         with:
@@ -78,7 +84,21 @@ jobs:
 
       - name: Build Gecko WebAssembly runtime
         working-directory: gecko-src
+        env:
+          RUSTFLAGS: "-C target-feature=+simd128"
         run: wasm-pack build crates/web --target web --out-dir pkg --out-name gecko_web --release --no-opt
+
+      - name: Optimize WebAssembly with a current Binaryen
+        run: |
+          curl -sL https://github.com/WebAssembly/binaryen/releases/download/version_123/binaryen-version_123-x86_64-linux.tar.gz | tar xz
+          WASM=gecko-src/crates/web/pkg/gecko_web_bg.wasm
+          ls -l "$WASM"
+          if ./binaryen-version_123/bin/wasm-opt -O3 --all-features "$WASM" -o "$WASM.opt"; then
+            mv "$WASM.opt" "$WASM"
+          else
+            echo "wasm-opt failed; keeping the unoptimized build"
+          fi
+          ls -l "$WASM"
 
       - name: Checkout streaming-reader test branch
         uses: actions/checkout@v4
