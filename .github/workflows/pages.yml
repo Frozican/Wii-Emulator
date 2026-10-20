@@ -54,6 +54,9 @@ jobs:
       - name: Stream ROM into WASM memory
         run: python3 scripts/patch-rom-upload.py
 
+      - name: Stream RVZ discs block by block
+        run: python3 scripts/patch-rvz-stream.py
+
       - name: Install Rust WebAssembly target
         uses: dtolnay/rust-toolchain@1.96.0
         with:
