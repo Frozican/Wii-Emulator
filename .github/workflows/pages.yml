@@ -78,7 +78,7 @@ jobs:
 
       - name: Build Gecko WebAssembly runtime
         working-directory: gecko-src
-        run: wasm-pack build crates/web --target web --out-dir pkg --out-name gecko_web --release
+        run: wasm-pack build crates/web --target web --out-dir pkg --out-name gecko_web --release --no-opt
 
       - name: Checkout streaming-reader test branch
         uses: actions/checkout@v4
@@ -102,7 +102,7 @@ jobs:
 
       - name: Build streaming-reader WASM
         working-directory: reader-src
-        run: wasm-pack build crates/web --target web --out-dir pkg --out-name gecko_web --release
+        run: wasm-pack build crates/web --target web --out-dir pkg --out-name gecko_web --release --no-opt
 
       - name: Assemble static website
         run: |
