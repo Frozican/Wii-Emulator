@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Add diagnostic counters to the performance HUD of the Gecko web build.
+"""Diagnostic counters for the Gecko web build, shown in their own HTML overlay.
 
-The HUD gets a second and third line:
+The counters used to be drawn inside the emulator's egui HUD (top right), where
+they collided with the page's boot status/progress panels. They now live in a
+small fixed <pre> at the bottom left of the page that is refreshed twice a
+second from JavaScript. The original one-line FPS HUD stays untouched.
+
+Overlay lines:
     frames N actions N draws N presents N
-    tex N xfbcopy N efbcopy N verts N | present WxH parts N
+    tex N xfbcopy N efbcopy N verts N
+    present WxH parts N
 
   frames   - emulation slices rendered by the page (one per browser frame)
   actions  - GX actions the emulated GPU produced so far
@@ -16,20 +22,13 @@ The HUD gets a second and third line:
   verts    - vertices drawn so far
   present  - size and tile count of the last presented frame
 
-How to read it on a black screen:
-  actions ~ 0                      -> the emulated CPU has not reached any GPU work
-  draws ~ frames, tex ~ 0, verts small -> the game draws one flat quad per frame
-                                      (black / fade); it is still booting
-  tex and verts growing fast       -> real content is being drawn; if the screen
-                                      is still black, the output path is at fault
-  efbcopy growing                  -> the game depends on render-to-texture,
-                                      which this web build does not support yet
-
-Run after the other patch scripts and before the wasm-pack build.
+Run after patch-rvz-stream.py (it extends that script's import line) and
+before the wasm-pack build.
 """
 from pathlib import Path
 
 web_rs = Path("gecko-src/crates/web/src/lib.rs")
+web_html = Path("gecko-src/crates/web/index.html")
 
 
 def replace_once(path: Path, old: str, new: str) -> None:
@@ -40,6 +39,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
     path.write_text(text.replace(old, new, 1))
 
 
+# ---------------------------------------------------------------- Rust side
 replace_once(
     web_rs,
     "use gecko::host::{DrawVertex, GxAction, RenderSink};\n",
@@ -57,6 +57,25 @@ static STAT_VERTS: AtomicU64 = AtomicU64::new(0);
 static STAT_PRESENT_W: AtomicU64 = AtomicU64::new(0);
 static STAT_PRESENT_H: AtomicU64 = AtomicU64::new(0);
 static STAT_PRESENT_PARTS: AtomicU64 = AtomicU64::new(0);
+
+/// Counters for the page's diagnostic overlay (polled from JavaScript).
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn emulator_stats() -> String {
+    format!(
+        "frames {} actions {} draws {} presents {}\\ntex {} xfbcopy {} efbcopy {} verts {}\\npresent {}x{} parts {}",
+        STAT_FRAMES.load(StatOrdering::Relaxed),
+        STAT_ACTIONS.load(StatOrdering::Relaxed),
+        STAT_DRAWS.load(StatOrdering::Relaxed),
+        STAT_PRESENTS.load(StatOrdering::Relaxed),
+        STAT_TEXLOADS.load(StatOrdering::Relaxed),
+        STAT_XFBCOPY.load(StatOrdering::Relaxed),
+        STAT_EFBCOPY.load(StatOrdering::Relaxed),
+        STAT_VERTS.load(StatOrdering::Relaxed),
+        STAT_PRESENT_W.load(StatOrdering::Relaxed),
+        STAT_PRESENT_H.load(StatOrdering::Relaxed),
+        STAT_PRESENT_PARTS.load(StatOrdering::Relaxed),
+    )
+}
 """,
 )
 
@@ -104,31 +123,29 @@ replace_once(
 """,
 )
 
+# ---------------------------------------------------------------- HTML side
 replace_once(
-    web_rs,
-    'ui.label(egui::RichText::new(format!("{fps:.1} FPS  {native_pct:.1}%")).monospace());',
-    """ui.label(
-                        egui::RichText::new(format!(
-                            "{fps:.1} FPS  {native_pct:.1}%\\nframes {} actions {} draws {} presents {}\\ntex {} xfbcopy {} efbcopy {} verts {}\\npresent {}x{} parts {}",
-                            STAT_FRAMES.load(StatOrdering::Relaxed),
-                            STAT_ACTIONS.load(StatOrdering::Relaxed),
-                            STAT_DRAWS.load(StatOrdering::Relaxed),
-                            STAT_PRESENTS.load(StatOrdering::Relaxed),
-                            STAT_TEXLOADS.load(StatOrdering::Relaxed),
-                            STAT_XFBCOPY.load(StatOrdering::Relaxed),
-                            STAT_EFBCOPY.load(StatOrdering::Relaxed),
-                            STAT_VERTS.load(StatOrdering::Relaxed),
-                            STAT_PRESENT_W.load(StatOrdering::Relaxed),
-                            STAT_PRESENT_H.load(StatOrdering::Relaxed),
-                            STAT_PRESENT_PARTS.load(StatOrdering::Relaxed),
-                        ))
-                        .monospace(),
-                    );""",
+    web_html,
+    "prepare_rvz_stream } from './pkg/gecko_web.js';",
+    """prepare_rvz_stream, emulator_stats } from './pkg/gecko_web.js';
+
+            // Diagnostic overlay (patch-hud-stats): separate from the emulator HUD.
+            const statsEl = document.createElement('pre');
+            statsEl.style.cssText = 'position:fixed;left:6px;bottom:6px;margin:0;padding:4px 6px;'
+                + 'font:11px/1.3 monospace;color:#9f9;background:rgba(0,0,0,.65);border-radius:4px;'
+                + 'z-index:9999;pointer-events:none;white-space:pre';
+            document.body.appendChild(statsEl);
+            setInterval(() => {
+                try { statsEl.textContent = emulator_stats(); } catch (error) { /* wasm not ready yet */ }
+            }, 500);""",
 )
 
-text = web_rs.read_text()
-for needle in ("STAT_PRESENT_PARTS.load", "STAT_EFBCOPY.fetch_add", "STAT_TEXLOADS.fetch_add", "STAT_FRAMES.fetch_add"):
-    if needle not in text:
-        raise SystemExit(f"HUD stats patch validation failed: {needle}")
+rs = web_rs.read_text()
+html = web_html.read_text()
+for needle in ("pub fn emulator_stats()", "STAT_EFBCOPY.fetch_add", "STAT_TEXLOADS.fetch_add", "STAT_FRAMES.fetch_add"):
+    if needle not in rs:
+        raise SystemExit(f"HUD stats patch validation failed (lib.rs): {needle}")
+if "emulator_stats()" not in html:
+    raise SystemExit("HUD stats patch validation failed (index.html)")
 
-print("Patched Gecko web HUD: frame / action / draw / texture / copy / present counters.")
+print("Added diagnostic counters and a separate overlay (bottom left).")
